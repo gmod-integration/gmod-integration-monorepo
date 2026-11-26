@@ -5,7 +5,7 @@ import prisma from '@gmod/infra-prisma'
 import { isErasureBlocked } from './privacy.js'
 import { AuthSessionError, resolveApplicationSession, type AuthSession } from '@gmod/domain-auth/authSessions.js'
 import { getValidDiscordToken, refreshDiscordCredentials } from '@gmod/domain-auth/discordOAuth.js'
-import { readDiscordGuildPermissionsRevision } from './guildPermissions.js'
+import { readDiscordGuildPermissionsEpoch, readDiscordGuildPermissionsRevision } from './guildPermissions.js'
 
 const GUILD_CACHE_SECONDS = 120
 const GUILD_LOCK_MS = 30_000
@@ -15,7 +15,7 @@ const RELEASE_LOCK = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis
 export class GuildPermissionsUnavailableError extends Error {
   readonly code = 'provider_unavailable'
   readonly status = 503
-  constructor() {
+  constructor(readonly retryAfter?: number) {
     super('Discord permissions are temporarily unavailable. Please try again.')
   }
 }
@@ -28,7 +28,8 @@ export type DiscordGuild = {
   permissions?: string | number
   [key: string]: unknown
 }
-export type GuildPermissionLookupOptions = { fresh?: boolean }
+export type GuildPermissionLookupOptions = { fresh?: boolean; requestScope?: object }
+type RequestPermissions = { guilds: DiscordGuild[]; revision: string; fresh: boolean; expiresAt: number }
 function guildList(value: unknown): DiscordGuild[] {
   if (
     !Array.isArray(value) ||
@@ -39,6 +40,8 @@ function guildList(value: unknown): DiscordGuild[] {
 }
 
 export class PanelUser {
+  private readonly requestPermissions = new WeakMap<object, RequestPermissions>()
+  private readonly requestLookups = new WeakMap<object, { promise: Promise<DiscordGuild[]>; fresh: boolean }>()
   public user: any
   public discordID: string
   public authSession?: AuthSession
@@ -91,19 +94,64 @@ export class PanelUser {
   }
 
   async findGuilds(options: GuildPermissionLookupOptions = {}): Promise<DiscordGuild[]> {
+    const scope = options.requestScope
+    if (!scope) return this.lookupGuilds(options)
+    const pending = this.requestLookups.get(scope)
+    if (pending && (!options.fresh || pending.fresh)) {
+      await pending.promise
+      // Recheck privacy, the current grant and durable revisions after the shared request resolves.
+      return this.lookupGuilds(options)
+    }
+    const promise = this.lookupGuilds(options)
+    this.requestLookups.set(scope, { promise, fresh: !!options.fresh })
+    try {
+      return await promise
+    } finally {
+      if (this.requestLookups.get(scope)?.promise === promise) this.requestLookups.delete(scope)
+    }
+  }
+
+  private async lookupGuilds(options: GuildPermissionLookupOptions): Promise<DiscordGuild[]> {
     if (await isErasureBlocked(this.discordID)) return []
     // A cached permission list cannot outlive a revoked Discord grant.
     let token = await this.getDiscordToken()
     const cacheKey = `user:${this.discordID}:guilds`
     const lockKey = `user:${this.discordID}:guild-permissions-lock`
+    const retryKey = `user:${this.discordID}:guild-permissions-retry`
+    const remember = (guilds: DiscordGuild[], revision: string, fresh: boolean) => {
+      if (options.requestScope)
+        this.requestPermissions.set(options.requestScope, {
+          guilds,
+          revision,
+          fresh,
+          expiresAt: Date.now() + GUILD_CACHE_SECONDS * 1_000,
+        })
+      return guilds
+    }
+    const scoped = options.requestScope && this.requestPermissions.get(options.requestScope)
+    if (
+      scoped &&
+      scoped.expiresAt > Date.now() &&
+      (!options.fresh || scoped.fresh) &&
+      scoped.revision ===
+        (await readDiscordGuildPermissionsRevision(
+          this.discordID,
+          scoped.guilds.map((guild) => guild.id),
+        ))
+    )
+      return scoped.guilds
     const readCached = async (): Promise<DiscordGuild[] | null> => {
       if (options.fresh) return null
-      const revision = await readDiscordGuildPermissionsRevision(this.discordID)
       const cached = await redis.get(cacheKey)
       if (cached === null) return null
       try {
         const value = JSON.parse(cached)
-        if (value?.revision === revision) return guildList(value.guilds)
+        const guilds = guildList(value?.guilds)
+        const revision = await readDiscordGuildPermissionsRevision(
+          this.discordID,
+          guilds.map((guild) => guild.id),
+        )
+        if (value.revision === revision) return remember(guilds, revision, false)
       } catch {
         // A damaged or pre-revision cache is discarded rather than trusted for authorization.
       }
@@ -112,6 +160,13 @@ export class PanelUser {
     }
     const cached = await readCached()
     if (cached !== null) return cached
+    const checkRetry = async () => {
+      const schedule = await redis.get(retryKey)
+      const until = Number(schedule)
+      if (Number.isFinite(until) && until > Date.now())
+        throw new GuildPermissionsUnavailableError(Math.max(1, Math.ceil((until - Date.now()) / 1_000)))
+    }
+    await checkRetry()
 
     const owner = randomUUID()
     const deadline = Date.now() + GUILD_LOCK_WAIT_MS
@@ -130,7 +185,9 @@ export class PanelUser {
     try {
       const filled = await readCached()
       if (filled !== null) return filled
-      const revision = await readDiscordGuildPermissionsRevision(this.discordID)
+      // A contender may have received a 429 while this request waited for the lease.
+      await checkRetry()
+      const epoch = await readDiscordGuildPermissionsEpoch(this.discordID)
       const request = async (token: string) =>
         fetch('https://discord.com/api/users/@me/guilds', {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -156,6 +213,18 @@ export class PanelUser {
         if (response.status === 401) {
           throw new AuthSessionError(403, 'discord_reauth_required', 'Reconnect Discord to continue.')
         }
+        if (response.status === 429) {
+          const header = response.headers?.get('retry-after')
+          const body = await response.json?.().catch(() => undefined)
+          const input = header ?? body?.retry_after
+          const seconds =
+            typeof input === 'string' && !Number.isFinite(Number(input))
+              ? (Date.parse(input) - Date.now()) / 1_000
+              : Number(input)
+          const retryAfter = Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : 1
+          await redis.set(retryKey, String(Date.now() + retryAfter * 1_000), 'PX', retryAfter * 1_000)
+          throw new GuildPermissionsUnavailableError(retryAfter)
+        }
         throw new GuildPermissionsUnavailableError()
       }
       let guilds: DiscordGuild[]
@@ -165,10 +234,19 @@ export class PanelUser {
         throw new GuildPermissionsUnavailableError()
       }
       if (await isErasureBlocked(this.discordID)) return []
-      if ((await readDiscordGuildPermissionsRevision(this.discordID)) !== revision)
+      if ((await readDiscordGuildPermissionsEpoch(this.discordID)) !== epoch)
+        throw new GuildPermissionsUnavailableError()
+      const revision = await readDiscordGuildPermissionsRevision(
+        this.discordID,
+        guilds.map((guild) => guild.id),
+      )
+      if ((await readDiscordGuildPermissionsEpoch(this.discordID)) !== epoch)
         throw new GuildPermissionsUnavailableError()
       await redis.set(cacheKey, JSON.stringify({ revision, guilds }), 'EX', GUILD_CACHE_SECONDS)
-      return guilds
+      await redis.del(retryKey)
+      if ((await readDiscordGuildPermissionsEpoch(this.discordID)) !== epoch)
+        throw new GuildPermissionsUnavailableError()
+      return remember(guilds, revision, true)
     } finally {
       await redis.eval(RELEASE_LOCK, 1, lockKey, owner)
     }

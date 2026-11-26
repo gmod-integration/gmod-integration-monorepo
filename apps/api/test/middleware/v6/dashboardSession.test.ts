@@ -34,7 +34,7 @@ vi.mock('@gmod/domain-guild/Guild.js', () => ({
     }
   },
 }))
-const { dashboardSession, dashboardGuild, dashboardServer } =
+const { dashboardSession, dashboardGuild, dashboardServer, dashboardServerReadOnly } =
   await import('../../../src/middleware/v6/dashboardSession.js')
 const current = { id: 'session-A', discordID: 'd1', actorDiscordID: 'developer' }
 const panel = { discordID: 'd1', isAdminOfGuild: vi.fn() }
@@ -190,6 +190,19 @@ describe('v6 authorization stays separate from session and provider failures', (
     expect(panel.isAdminOfGuild).toHaveBeenCalledExactlyOnceWith('g1')
   })
 
+  it('authorizes a read-only POST without forcing a provider refresh while still checking the exact server', async () => {
+    const request = req({ panelUser: panel, method: 'POST' })
+    const next = vi.fn()
+    await dashboardServerReadOnly(request, res(), next)
+    expect(dashboardAccessMock).toHaveBeenCalledExactlyOnceWith(panel, 'g1', {
+      serverID: 's1',
+      fresh: false,
+      permissionScope: request,
+    })
+    expect(next).toHaveBeenCalledOnce()
+    expect(request.server).toEqual({ id: 's1', guild: 'g1' })
+  })
+
   it('returns forbidden for a verified absence of administration permission', async () => {
     panel.isAdminOfGuild.mockResolvedValueOnce(false)
     const response = res()
@@ -226,7 +239,11 @@ describe('v6 authorization stays separate from session and provider failures', (
       const response = res()
       const next = vi.fn()
       await dashboardServer(request, response, next)
-      expect(dashboardAccessMock).toHaveBeenCalledWith(panel, 'g1', { serverID: 's1', fresh: method === 'PUT' })
+      expect(dashboardAccessMock).toHaveBeenCalledWith(panel, 'g1', {
+        serverID: 's1',
+        fresh: method === 'PUT',
+        permissionScope: request,
+      })
       expect(response.status).toHaveBeenCalledWith(403)
       expect(request.server).toBeUndefined()
       expect(next).not.toHaveBeenCalled()

@@ -122,8 +122,15 @@ const redisMock: any = {
   }),
   duplicate: vi.fn(() => redisSubscriberMock),
 }
+const guildMembershipsMock = vi.fn().mockResolvedValue(null)
 const gracefulShutdownRedisMock = vi.fn().mockResolvedValue(undefined)
-vi.mock('@gmod/infra-redis', () => ({ default: redisMock, gracefulShutdownRedis: gracefulShutdownRedisMock }))
+vi.mock('@gmod/infra-redis', () => ({
+  default: {
+    ...redisMock,
+    get: (key: string) => (/^user:.*:guilds$/.test(key) ? guildMembershipsMock(key) : redisMock.get(key)),
+  },
+  gracefulShutdownRedis: gracefulShutdownRedisMock,
+}))
 const recordAddonActivityMock = vi.fn().mockResolvedValue(undefined)
 vi.mock('@gmod/infra-redis/addonTelemetry.js', () => ({ recordAddonActivity: recordAddonActivityMock }))
 const consoleViewers = new Map<string, Set<string>>()
@@ -238,6 +245,7 @@ describe('apps/websocket main()', () => {
     renewConsoleViewerMock.mockClear()
     removeConsoleViewerMock.mockClear()
     redisMock.mget.mockReset().mockResolvedValue([null, null])
+    guildMembershipsMock.mockReset().mockResolvedValue(null)
     getServerFromIDMock.mockReset()
     consumeTicketMock.mockReset().mockImplementation(async (ticket) => {
       const found = tickets.get(ticket) || null
@@ -700,6 +708,7 @@ describe('apps/websocket main()', () => {
       expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(1)
     })
     it('refreshes a newly granted guild role even when that guild was absent from the previous admin snapshot', async () => {
+      guildMembershipsMock.mockResolvedValue(JSON.stringify({ guilds: [{ id: 'g1', permissions: '0' }] }))
       getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
       const ws = await connectClient('newly-granted-community-admin')
       getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([{ id: 'g1' }])
@@ -709,6 +718,31 @@ describe('apps/websocket main()', () => {
       )
       await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
       expect(ws.send).toHaveBeenCalled()
+      expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(2)
+    })
+    it('preserves cached socket permissions after another community changes its roles', async () => {
+      guildMembershipsMock.mockResolvedValue(JSON.stringify({ guilds: [{ id: 'g1' }] }))
+      const ws = await connectClient('unrelated-community-role-change')
+      await subscriberHandlers.message(
+        'gmi:discord:guild-permissions-invalidated',
+        JSON.stringify({ guildID: 'unrelated', revision: 'changed' }),
+      )
+      await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
+      expect(ws.send).toHaveBeenCalled()
+      expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(1)
+    })
+    it('invalidates conservatively if reading a notification membership scope fails', async () => {
+      const ws = await connectClient('notification-scope-outage')
+      guildMembershipsMock.mockRejectedValueOnce(new Error('Redis unavailable'))
+      getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
+      await expect(
+        subscriberHandlers.message(
+          'gmi:discord:guild-permissions-invalidated',
+          JSON.stringify({ guildID: 'g1', revision: 'changed' }),
+        ),
+      ).resolves.toBeUndefined()
+      await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
+      expect(ws.send).not.toHaveBeenCalled()
       expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(2)
     })
     it('rechecks durable revisions before delivery even if the pubsub invalidation was missed', async () => {

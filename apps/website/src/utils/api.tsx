@@ -69,9 +69,11 @@ export async function fetchAPI(
     body: JSON.stringify(body),
     ...options,
   })
-  // Preview accepts a draft by POST but never changes saved configuration or access.
-  const readOnlyPreview =
-    method === 'POST' && /^\/users\/[^/]+\/guilds\/[^/]+\/servers\/[^/]+\/status\/preview\/?$/.test(scopedEndpoint)
-  if (response.status === 403 || (response.ok && method !== 'GET' && !readOnlyPreview)) refreshAccess()
+  // These POSTs calculate a result without changing saved configuration, rewards or access.
+  const readOnlyPost =
+    method === 'POST' &&
+    (/^\/users\/[^/]+\/guilds\/[^/]+\/servers\/[^/]+\/status\/preview\/?$/.test(scopedEndpoint) ||
+      /^\/v6\/guilds\/[^/]+\/servers\/[^/]+\/rewards\/rules\/[^/]+\/simulate\/?$/.test(scopedEndpoint))
+  if (response.status === 403 || (response.ok && method !== 'GET' && !readOnlyPost)) refreshAccess()
   return response
 }

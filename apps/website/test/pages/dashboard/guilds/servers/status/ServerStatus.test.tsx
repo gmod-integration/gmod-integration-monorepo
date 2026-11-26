@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
-import { configuration, installNetwork, puts, renderStatus, viewport } from './statusTestHelpers.js'
+import { configuration, installNetwork, PREVIEW, puts, renderStatus, viewport } from './statusTestHelpers.js'
 import { okJson, errJson } from '../testHelpers.js'
 
 vi.mock('../../../../../../src/utils/api.js', () => ({
@@ -29,6 +29,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -64,6 +65,57 @@ describe('automatic status settings', () => {
       },
       revision: 'a'.repeat(64),
     })
+  })
+  it('renders one preview for a message edit without repeating it after an unchanged autosave', async () => {
+    vi.useFakeTimers()
+    const network = installNetwork(api)
+    renderStatus()
+    await ready()
+    await vi.advanceTimersByTimeAsync(250)
+    const previews = () => api.mock.calls.filter(([path]) => path === PREVIEW)
+    const initial = previews().length
+    await fireEvent.click(players())
+    await vi.advanceTimersByTimeAsync(250)
+    expect(previews()).toHaveLength(initial + 1)
+    expect(puts(network)).toHaveLength(0)
+    await vi.advanceTimersByTimeAsync(150)
+    expect(puts(network)).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(previews()).toHaveLength(initial + 1)
+    expect(players()).toBeChecked()
+  })
+  it('renders one additional preview when an accepted save normalizes the visible message draft', async () => {
+    vi.useFakeTimers()
+    const network = installNetwork(api)
+    renderStatus()
+    await ready()
+    await vi.advanceTimersByTimeAsync(250)
+    const previews = () => api.mock.calls.filter(([path]) => path === PREVIEW)
+    const initial = previews().length
+    network.mockImplementationOnce(async () =>
+      okJson({
+        configuration: configuration({
+          settings: {
+            show_player_list_status: true,
+            status_player_list_format: '**{name}**',
+            show_status_chart: false,
+          },
+        }),
+        revision: 'b'.repeat(64),
+        sync: 'applied',
+      }),
+    )
+    await fireEvent.click(players())
+    await vi.advanceTimersByTimeAsync(250)
+    expect(previews()).toHaveLength(initial + 1)
+    await vi.advanceTimersByTimeAsync(150)
+    expect(puts(network)).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(250)
+    expect(previews()).toHaveLength(initial + 2)
+    expect(previews().at(-1)?.[2].settings.status_player_list_format).toBe('**{name}**')
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(previews()).toHaveLength(initial + 2)
+    expect(screen.getByLabelText('Player List Format')).toHaveValue('**{name}**')
   })
   it('serializes card changes and carries the latest revision and saved sibling into the next write', async () => {
     const network = installNetwork(api)

@@ -80,6 +80,9 @@ eight seconds; an HTTP `401` triggers one credential refresh and one retry.
 
 Rate limiting, provider/network failures and malformed provider payloads fail as
 `GuildPermissionsUnavailableError` (`503`, `provider_unavailable`) rather than an empty permission list.
+A guild-list `429` stores Discord's `Retry-After` deadline in Redis and exposes the remaining delay on
+the error. Both new requests and lock waiters check it before calling the provider; API responses retain
+the `Retry-After` header. Expired or invalidated rights are never served to work around a provider outage.
 A repeated provider `401` requires Discord reauthorization. If erasure starts during a lookup, fetched
 personal data is not cached or returned.
 
@@ -110,11 +113,18 @@ The [WebSocket gateway](../apps/websocket.md) adds its own bounded permission sn
 before messages and delivery.
 
 Dashboard mutations use `canAccessDashboardGuild(panel, guildID, { fresh: true, serverID? })` to bypass
-cached Discord rights as well. Read caches
-carry user/global revisions from `guildPermissions.ts`; old raw-array caches are discarded. Discord
-member/role/ownership events invalidate those revisions and notify gateways. Reads verify revisions
-before returning cached rights and before storing a completed lookup, so an invalidated in-flight
-result cannot restore old permissions. Gateways also check durable revisions before scoped delivery.
+cached Discord rights as well. API callers pass a `permissionScope` object for the current request;
+`PanelUser.findGuilds` receives it as `requestScope` and reuses verified Discord facts within that scope.
+It still rechecks the grant, privacy barrier and permission revisions, while every policy decision rereads
+durable purchase/rank/server data. Cached read facts cannot satisfy a fresh mutation check.
+
+Read caches carry user and per-guild revision vectors from `guildPermissions.ts` for all OAuth memberships,
+including communities where the account is not yet an administrator. Role/ownership changes invalidate
+affected memberships without invalidating unrelated communities. A global epoch detects changes during
+provider lookups whose membership scope is not yet known. Guild revision and epoch updates are atomic;
+an invalidated in-flight result cannot restore old permissions. Old cache formats are discarded.
+Gateways check durable revisions before scoped delivery and conservatively invalidate when membership
+scope cannot be read. Provider failures honor the shared retry deadline before another lookup.
 
 ## Depends on
 

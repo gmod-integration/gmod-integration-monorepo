@@ -170,7 +170,16 @@ describe('utils/api.tsx', () => {
       expect(fetchMock.mock.calls[0][1].signal?.aborted).toBe(true)
     })
 
-    it('renders successive previews without invalidating access and preserves authenticated POST protection', async () => {
+    it.each([
+      [
+        '/users/:discordID/guilds/:guildID/servers/:serverID/status/preview',
+        'http://localhost:5001/v3/users/u1/guilds/g1/servers/s1/status/preview',
+      ],
+      [
+        '/v6/guilds/:guildID/servers/:serverID/rewards/rules/r1/simulate',
+        'http://localhost:5001/v6/guilds/g1/servers/s1/rewards/rules/r1/simulate',
+      ],
+    ])('calculates read-only POST results without invalidating access: %s', async (endpoint, resolvedURL) => {
       acceptAuthSession(sessionFixture())
       localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
       localStorage.setItem('server', JSON.stringify({ id: 's1' }))
@@ -180,14 +189,14 @@ describe('utils/api.tsx', () => {
       vi.stubGlobal('fetch', network)
       try {
         for (const name of ['Draft', 'Draft revised']) {
-          await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/status/preview', 'POST', {
+          await fetchAPI(endpoint, 'POST', {
             settings: { status_player_list_format: name },
           })
         }
         expect(network).toHaveBeenCalledTimes(2)
         expect(refresh).not.toHaveBeenCalled()
         for (const [url, init] of network.mock.calls) {
-          expect(url).toBe('http://localhost:5001/v3/users/u1/guilds/g1/servers/s1/status/preview')
+          expect(url).toBe(resolvedURL)
           expect(init).toMatchObject({ method: 'POST', credentials: 'include' })
           expect(new Headers(init.headers).get('X-CSRF-Token')).toBe('csrf-token')
         }
@@ -202,6 +211,9 @@ describe('utils/api.tsx', () => {
       ['/users/u1/guilds/g1/servers/s1/status/preview/publish', 'POST', 200],
       ['/v6/guilds/g1/servers/s1/status/configuration', 'PUT', 200],
       ['/users/u1/guilds/g1/servers/s1/status/preview', 'POST', 403],
+      ['/v6/guilds/g1/servers/s1/rewards/rules/r1/simulate', 'POST', 403],
+      ['/v6/guilds/g1/servers/s1/rewards/rules/r1/grant', 'POST', 200],
+      ['/v6/guilds/g1/servers/s1/rewards/rules/r1/simulate/grant', 'POST', 200],
     ])('refreshes access for mutations and denied previews: %s %s %s', async (endpoint, method, status) => {
       acceptAuthSession(sessionFixture())
       const refresh = vi.fn()

@@ -486,7 +486,11 @@ describe('userValidator', () => {
         expect(guildID).toBe('g1')
         expect(options.fresh).toBe(false)
       }
-      expect(dashboardAccessMock).toHaveBeenCalledWith(expect.anything(), 'g1', { serverID: 's1', fresh: false })
+      expect(dashboardAccessMock).toHaveBeenCalledWith(expect.anything(), 'g1', {
+        serverID: 's1',
+        fresh: false,
+        permissionScope: expect.any(Object),
+      })
       expect(enqueueDiscordGuildSnapshotMock).not.toHaveBeenCalled()
     })
 
@@ -599,6 +603,7 @@ describe('userValidator', () => {
         expect(dashboardAccessMock).toHaveBeenCalledWith(req.panelUser, 'g1', {
           serverID: 's1',
           fresh: method !== 'GET',
+          permissionScope: req,
         })
         expect(res.status).toHaveBeenCalledWith(403)
         expect(req.server).toBeUndefined()

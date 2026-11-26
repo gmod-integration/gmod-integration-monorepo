@@ -67,7 +67,9 @@ async function requireGuildAdministrator(
     denyDashboardAccess(res, { allowed: false, reason: 'scope_unavailable' })
     return null
   }
-  const access = await timeRequestStep(res, 'permissions', () => resolveDashboardAccess(panelUser, guildID, { fresh }))
+  const access = await timeRequestStep(res, 'permissions', () =>
+    resolveDashboardAccess(panelUser, guildID, { fresh, permissionScope: req }),
+  )
   if (!access.allowed) {
     denyDashboardAccess(res, access)
     return null
@@ -103,6 +105,21 @@ export async function userAdminGuildValidator(req: Request, res: Response, next:
   try {
     const guildID = await requireGuildAdministrator(req, res)
     if (guildID === null) return
+    req.guild = new Guild({ id: guildID })
+    return userGuildSnapshotValidator(req, res, next)
+  } catch (error) {
+    return next(error)
+  }
+}
+
+/** Fetch Discord metadata only for handlers that actually use it, after scope authorization. */
+export async function userGuildSnapshotValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const guildID = req.guild?.id
+    if (!guildID) {
+      denyDashboardAccess(res, { allowed: false, reason: 'scope_unavailable' })
+      return
+    }
     const dscGuild = await timeRequestStep(res, 'discord', () => enqueueDiscordGuildSnapshot(guildID))
     if (!dscGuild) {
       res.status(404).json({
@@ -111,11 +128,6 @@ export async function userAdminGuildValidator(req: Request, res: Response, next:
       return
     }
 
-    // Guild's constructor never throws and always returns an instance for a plain { id }
-    // object, so no falsy guard is needed here.
-    const guild = new Guild({ id: guildID })
-
-    req.guild = guild
     req.dscGuild = dscGuild
     return next()
   } catch (error) {
@@ -145,6 +157,7 @@ async function validateServerScope(req: Request, res: Response, next: NextFuncti
           resolveDashboardAccess(req.panelUser!, req.guild!.id, {
             serverID,
             fresh,
+            permissionScope: req,
           }),
         )
       : { allowed: false as const, reason: 'scope_unavailable' as const }

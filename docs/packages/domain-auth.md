@@ -42,6 +42,9 @@ Conditional SQL writes check both the credential version and the refresh credent
 cannot overwrite a concurrent login. A genuine `invalid_grant` removes only the rejected version.
 Network errors, malformed responses, 429 and 5xx retain credentials and schedule bounded retry with
 backoff and Retry-After support. A usable access token remains available during a failed early refresh.
+The shared retry deadline is checked both before waiting for the lease and after acquiring it, so a
+waiting replica respects a cooldown recorded by the previous owner. A newer login/version still takes
+precedence over the old credential's retry schedule.
 
 Only API startup explicitly starts the refresh worker, after database readiness. It scans ordered
 batches of 20 with concurrency 4, schedules the next pass after completion, and drains active work before

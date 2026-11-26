@@ -249,6 +249,13 @@ buckets. The server/date indexes for arrivals and completed sessions ship in the
 
 ## Discord status preview
 
+Automatic preview requests compare the effective draft, locale and account/server scope. Reapplying a
+saved draft or assigning database IDs to unchanged link buttons does not render it again. A changed
+server-normalized value does trigger a new preview. One render is in flight at a time; further edits
+coalesce to the latest draft, with a 30-second timeout and cancellation on unmount. Explicit refresh and
+retry remain available. Successful preview and reward-simulation POSTs do not invalidate the access
+snapshot; permission refusals still refresh access.
+
 The server status page shares a draft between its settings and button editors. A 250 ms debounce
 requests the bot's serialized status render, with stale responses ignored after edits or navigation.
 The preview is also visible inside the format/button dialogs and the channel-send confirmation.

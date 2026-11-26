@@ -23,7 +23,7 @@ vi.mock('@gmod/infra-prisma', () => ({
 vi.mock('../src/privacy.js', () => ({ isErasureBlocked: mocks.erased }))
 import { canAccessDashboardGuild, findDashboardGuilds, resolveDashboardAccess } from '../src/dashboardAccess.js'
 import { DashboardAccessDenialSchema } from '@gmod/schema/user/DashboardAccessSchema.js'
-import type { DiscordGuild } from '../src/PanelUser.js'
+import type { DiscordGuild, GuildPermissionLookupOptions } from '../src/PanelUser.js'
 
 const steamA = '76561198000000001'
 const steamB = '76561198000000002'
@@ -32,7 +32,10 @@ let purchases: Array<{ steamID64: string; guild: string; revoke: boolean }>
 let servers: Array<{ id: string; guild: string }>
 let players: Array<{ server_id: string; steam_id: string; rank: string }>
 let settings: Array<{ serverID: string; setting: string; value: string }>
-const panel = { discordID: 'd1', findGuilds: vi.fn<() => Promise<DiscordGuild[]>>() }
+const panel = {
+  discordID: 'd1',
+  findGuilds: vi.fn<(options?: GuildPermissionLookupOptions) => Promise<DiscordGuild[]>>(),
+}
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -76,6 +79,24 @@ beforeEach(() => {
 })
 
 describe('durable dashboard authorization', () => {
+  it('rechecks exact-server ranks when Discord permission facts are shared within a request', async () => {
+    const permissionScope = {}
+    await expect(resolveDashboardAccess(panel, 'g1', { fresh: true, permissionScope })).resolves.toEqual({
+      allowed: true,
+    })
+    await expect(
+      resolveDashboardAccess(panel, 'g1', { serverID: 's2', fresh: true, permissionScope }),
+    ).resolves.toEqual({ allowed: false, reason: 'game_admin_required' })
+    players[0].rank = 'user'
+    await expect(
+      resolveDashboardAccess(panel, 'g1', { serverID: 's1', fresh: true, permissionScope }),
+    ).resolves.toEqual({ allowed: false, reason: 'game_admin_required' })
+    expect(panel.findGuilds).toHaveBeenCalledTimes(3)
+    for (const [options] of panel.findGuilds.mock.calls) {
+      expect(options).toEqual({ fresh: true, requestScope: permissionScope })
+    }
+  })
+
   it('requires both Discord administration and a stored game rank on the exact target server', async () => {
     await expect(canAccessDashboardGuild(panel, 'g1', { serverID: 's1', fresh: true })).resolves.toBe(true)
     expect(panel.findGuilds).toHaveBeenCalledWith({ fresh: true })

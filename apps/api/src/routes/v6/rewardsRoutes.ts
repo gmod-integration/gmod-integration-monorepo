@@ -18,13 +18,12 @@ import {
   simulateReward,
   updateRewardRule,
 } from '@gmod/core/models/v6/rewards.js'
-import { dashboardServer, dashboardSession } from '../../middleware/v6/dashboardSession.js'
+import { dashboardServer, dashboardServerReadOnly, dashboardSession } from '../../middleware/v6/dashboardSession.js'
 import asyncHandler from '../../middleware/asyncHandler.js'
 import { getSingleParam } from '../../utils/requestParams.js'
 
 const router = express.Router()
 const route = '/guilds/:guildID/servers/:serverID/rewards'
-router.use(route, asyncHandler(dashboardSession), asyncHandler(dashboardServer))
 const invalid = (res: Response) =>
   res.status(400).json({
     error: { code: 'invalid_request', message: 'The reward request is invalid.' },
@@ -41,6 +40,20 @@ const run = (operation: (req: Request, res: Response) => Promise<unknown>) =>
   })
 const ruleID = (req: Request) => RewardIDSchema.safeParse(getSingleParam(req.params.ruleID))
 const actor = (req: Request) => req.authSession!.actorDiscordID ?? req.authSession!.discordID
+
+// Register this read-only POST before the mutation guard; authentication/CSRF still applies.
+router.post(
+  `${route}/rules/:ruleID/simulate`,
+  asyncHandler(dashboardSession),
+  asyncHandler(dashboardServerReadOnly),
+  run(async (req, res) => {
+    const id = ruleID(req)
+    const input = RewardSimulationInputSchema.safeParse(req.body)
+    if (!id.success || !input.success || Object.keys(req.query).length) return invalid(res)
+    return res.json(await simulateReward(req.server!.id, id.data, input.data.steamID64))
+  }),
+)
+router.use(route, asyncHandler(dashboardSession), asyncHandler(dashboardServer))
 
 router.get(
   route,
@@ -81,15 +94,6 @@ router.delete(
     const input = RewardRuleDeleteSchema.safeParse(req.body)
     if (!id.success || !input.success || Object.keys(req.query).length) return invalid(res)
     return res.json(await deleteRewardRule(req.server!.id, id.data, input.data.revision, actor(req)))
-  }),
-)
-router.post(
-  `${route}/rules/:ruleID/simulate`,
-  run(async (req, res) => {
-    const id = ruleID(req)
-    const input = RewardSimulationInputSchema.safeParse(req.body)
-    if (!id.success || !input.success || Object.keys(req.query).length) return invalid(res)
-    return res.json(await simulateReward(req.server!.id, id.data, input.data.steamID64))
   }),
 )
 router.post(

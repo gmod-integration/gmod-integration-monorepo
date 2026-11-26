@@ -185,6 +185,19 @@ describe('v6 rewards authorization and rule endpoints', () => {
     expect(mocks.grant).not.toHaveBeenCalled()
     expect(mocks.create).not.toHaveBeenCalled()
     expect(mocks.update).not.toHaveBeenCalled()
+    expect(mocks.admin).toHaveBeenCalledExactlyOnceWith('g1')
+  })
+
+  it('allows repeated simulations from cached permissions when fresh checks are rate limited', async () => {
+    mocks.admin.mockImplementation(async (_guildID, options) => {
+      if (options?.fresh) throw Object.assign(new Error('Provider rate limited'), { status: 503 })
+      return true
+    })
+    expect((await perform('post', `${ruleURL}/simulate`, { steamID64 })).status).toBe(200)
+    expect((await perform('post', `${ruleURL}/simulate`, { steamID64 })).status).toBe(200)
+    expect(mocks.simulate).toHaveBeenCalledTimes(2)
+    expect((await perform('post', `${ruleURL}/grant`, manual)).status).toBe(503)
+    expect(mocks.grant).not.toHaveBeenCalled()
   })
 
   it('accepts an administrator Lua action without executing it while saving the rule', async () => {

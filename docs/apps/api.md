@@ -65,10 +65,11 @@ for the v3 bot snapshot, and `server` for server lookup. Access and addon config
 report their endpoint work as `access` and `config`. Inspect these values in the browser Network
 panel to distinguish database, permission and Discord queue waits on the running instance.
 
-Most v3 guild routes wait for a shared bot snapshot, including requests that ultimately return 304.
-The snapshot worker loads channels, roles, emojis and its icon concurrently. Reading stored addon
-configuration bypasses that snapshot while retaining session, guild administrator and server ownership
-checks. Access snapshots resolve entitlements and usage counts concurrently after authorization.
+V3 routes request a shared bot snapshot only when their handlers consume Discord metadata, such as
+channels, roles, emojis or verification-message creation. Stored community/server configuration,
+rules and server lists remain readable without that snapshot after the same session and scope checks.
+The snapshot worker loads channels, roles, emojis and its icon concurrently. Access snapshots resolve
+entitlements and usage counts concurrently after authorization.
 
 Community and server dashboard routes, including v3 compatibility routes, use the shared
 `@gmod/domain-user/dashboardAccess.js` authorization. Discord administrator permission and a recorded
@@ -76,7 +77,10 @@ in-game rank enabled in `ig_adminRank` are both required, with exceptions for th
 owner or the buyer of an active GmodStore purchase linked to this exact community. Community scope
 accepts a qualifying rank on any of its servers; server scope checks the target server. Steam links,
 purchases, rank settings and player ranks are read from the database, and mutations also request fresh
-Discord permissions. No connected player is required. Discovery and server lists filter by these same
+Discord permissions. Guild and server checks share those verified Discord facts within one HTTP request,
+while independently rereading the durable authorization data. A later mutation requests fresh facts again;
+grant revocation and permission-revision changes invalidate even the request-local facts.
+No connected player is required. Discovery and server lists filter by these same
 rights; platform administration and personal-account operations keep their distinct authorization.
 
 Confirmed policy refusals return HTTP 403 with `dashboard_access_denied` and a closed public `reason`
@@ -316,7 +320,10 @@ the Discord queue adapter, with cached successful/unavailable results.
 ## Status message drafts
 
 `POST /v3/users/:discordID/guilds/:guildID/servers/:serverID/status/preview` requires the normal session,
-guild-administrator and server checks. Its shared `StatusMessagePreviewSchema` contract accepts
+guild-administrator and server checks, using the bounded permission read cache despite its POST method.
+The read-only rewards simulation at `POST /v6/guilds/:guildID/servers/:serverID/rewards/rules/:ruleID/simulate`
+uses the same read authorization, including session/CSRF and exact-server checks. Publication and reward
+grants retain fresh permission checks. The preview's shared `StatusMessagePreviewSchema` contract accepts
 optional draft settings and buttons, then returns the bot identity, embed fields, button rows and an
 optional PNG image. Preview settings and buttons use the effective access policy, including a disabled
 chart and the free custom-button limit after entitlement expiry. The worker rechecks access when
