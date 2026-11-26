@@ -442,6 +442,50 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
   })
 
+  it('lets the administrator keep the current avatar after previewing a replacement', async () => {
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot()))
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
+    const editor = within(container.querySelector<HTMLDialogElement>('#edit_bot')!)
+    await fireEvent.change(editor.getByLabelText('Avatar'), {
+      target: {
+        files: [new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], 'avatar.png', { type: 'image/png' })],
+      },
+    })
+    await editor.findByAltText('New avatar preview')
+    await fireEvent.click(editor.getByRole('button', { name: 'Keep current avatar' }))
+    expect(editor.queryByAltText('New avatar preview')).not.toBeInTheDocument()
+    expect(editor.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
+  })
+
+  it.each(['read_error', 'invalid_result'])('keeps the saved avatar when the chosen image has %s', async (failure) => {
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot()))
+    vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementation(function (this: FileReader) {
+      if (failure === 'invalid_result')
+        Object.defineProperty(this, 'result', { value: 'data:image/png;base64,invalid-image' })
+      this.dispatchEvent(new ProgressEvent(failure === 'read_error' ? 'error' : 'load'))
+    })
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
+    const editor = within(container.querySelector<HTMLDialogElement>('#edit_bot')!)
+    await fireEvent.change(editor.getByLabelText('Avatar'), {
+      target: { files: [new File(['image'], 'avatar.png', { type: 'image/png' })] },
+    })
+    expect(
+      editor.getByText(
+        failure === 'read_error'
+          ? 'Unable to read this image. Choose it again.'
+          : 'Choose a PNG or JPEG image up to 2 MiB.',
+      ),
+    ).toBeInTheDocument()
+    expect(editor.queryByAltText('New avatar preview')).not.toBeInTheDocument()
+    expect(editor.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
+  })
+
   it('reports an error and keeps the previous bot when saving fails', async () => {
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ username: 'OldName' })))
     const { container } = renderWithProviders(() => <GuildBot />)

@@ -166,4 +166,33 @@ describe('console viewer leases across gateways', () => {
     vi.spyOn(redis, 'eval').mockResolvedValueOnce(result)
     await expect(readConsoleViewers('s1')).rejects.toThrow('snapshot')
   })
+
+  it.each([0, 1.5])('rejects a renewal without a valid positive lease: %s', async (result) => {
+    vi.spyOn(redis, 'eval').mockResolvedValueOnce(result)
+    await expect(renewConsoleViewer('s1', 'tab')).rejects.toThrow('renewal expired')
+    expect(await redis.keys('ws:console-viewers:*')).toEqual([])
+  })
+
+  it('contains a failed late compensation and lets the original lease expire', async () => {
+    const evaluate = redis.eval.bind(redis)
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const spy = vi.spyOn(redis, 'eval').mockImplementationOnce(async (...args: Parameters<typeof redis.eval>) => {
+      const result = await evaluate(...args)
+      await gate
+      return result
+    })
+    const request = renewConsoleViewer('s1', 'closed-tab').catch(() => 'unavailable')
+    await vi.advanceTimersByTimeAsync(501)
+    expect(await request).toBe('unavailable')
+    spy.mockRejectedValueOnce(new Error('Compensation storage unavailable'))
+    release()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(spy).toHaveBeenCalledTimes(2)
+    expect(await redis.pttl('ws:console-viewers:s1')).toBe(CONSOLE_VIEWER_TTL_MS - 501)
+    vi.setSystemTime(time + CONSOLE_VIEWER_TTL_MS)
+    expect(await readConsoleViewers('s1')).toEqual({ enabled: false, expiresAt: 0 })
+  })
 })

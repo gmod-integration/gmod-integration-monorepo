@@ -67,6 +67,42 @@ afterEach(() => {
 afterAll(() => redis.disconnect())
 
 describe('authenticated dashboard console commands', () => {
+  it('rejects an invalid resolved server scope before reading storage or dispatching', async () => {
+    const evaluate = vi.spyOn(redis, 'eval')
+    await expect(
+      executeServerConsoleCommand({ ...server, id: 'invalid/server' }, session(), input),
+    ).rejects.toMatchObject({ status: 400, code: 'invalid_request' })
+    expect(evaluate).not.toHaveBeenCalled()
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    null,
+    [],
+    ['reserved'],
+    ['unknown-state', ''],
+    ['completed', 'not-json'],
+    ['completed', JSON.stringify({ serverID: 's2', requestID, status: 'executed', code: 'executed' })],
+    ['completed', JSON.stringify({ serverID: 's1', requestID: commandID(2), status: 'executed', code: 'executed' })],
+  ])('fails closed on malformed or foreign reservation state without executing a command: %j', async (reply) => {
+    vi.spyOn(redis, 'eval').mockResolvedValueOnce(reply)
+    await expect(executeServerConsoleCommand(server, session(), input)).rejects.toMatchObject({
+      status: 503,
+      code: 'console_unavailable',
+    })
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(await redis.keys('console:rcon:*')).toEqual([])
+  })
+
+  it('records an unknown outcome if the transport returns an unsupported result and blocks duplicate dispatch', async () => {
+    dispatch.mockResolvedValueOnce('unsupported-provider-outcome')
+    const response = await executeServerConsoleCommand(server, session(), input)
+    expect(response).toEqual({ serverID: server.id, requestID, status: 'unknown', code: 'delivery_uncertain' })
+    expect(await executeServerConsoleCommand(server, session(), input)).toEqual(response)
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(await redis.pttl(`console:rcon:request:${requestID}`)).toBe(600_000)
+  })
+
   it('uses the verified panel identity without a Steam lookup and stores digests plus outcomes without command text', async () => {
     const command = 'echo private-command; status'
     const response = await executeServerConsoleCommand(server, session(), { requestID, command })

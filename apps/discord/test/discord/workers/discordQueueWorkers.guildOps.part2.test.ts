@@ -52,6 +52,8 @@ vi.mock('@gmod/domain-guild/discordModels.js', () => ({
 const getVerificationGuildMessageMock = vi.fn()
 const getPublicGuildInviteMock = vi.fn()
 const renderStatusPreviewMock = vi.fn()
+const deliverRewardRoleMock = vi.fn()
+vi.mock('../../../src/discord/utils/rewardRole.js', () => ({ deliverRewardRole: deliverRewardRoleMock }))
 vi.mock('../../../src/discord/utils/statusPreview.js', () => ({ renderStatusPreview: renderStatusPreviewMock }))
 vi.mock('../../../src/discord/utils/publicInvite.js', () => ({ getPublicGuildInvite: getPublicGuildInviteMock }))
 vi.mock('../../../src/discord/utils/messages.js', () => ({
@@ -78,6 +80,7 @@ function processor() {
 
 function resetAllMocks() {
   renderStatusPreviewMock.mockReset()
+  deliverRewardRoleMock.mockReset()
   gmLogMock.mockClear()
   getServerFromIDMock.mockReset()
   redisMock.set.mockReset().mockResolvedValue(undefined)
@@ -134,6 +137,32 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 2: server CRUD job p
     expect(lastReplyPayload()).toEqual({ correlationId: 'invalid', preview: null, error: 'Invalid draft button' })
   })
   beforeEach(() => resetAllMocks())
+
+  it.each([false, true])(
+    'returns a correlated reward result and refuses an expired queued grant: expired=%s',
+    async (expired) => {
+      const correlationId = 'c6801874-4d4b-4543-884c-80f379fe7299'
+      const input = {
+        serverID: 's1',
+        grantID: 'c6801874-4d4b-4543-884c-80f379fe7298',
+        actionID: 'a6801874-4d4b-4543-884c-80f379fe7299',
+        steamID64: '76561198000000000',
+        discordID: '123456789012345678',
+        roleID: '223456789012345678',
+      }
+      deliverRewardRoleMock.mockResolvedValueOnce({ status: 'delivered' })
+      await processor()(
+        makeJob('rewardRole', { ...input, correlationId, timestamp: new Date(Date.now() - (expired ? 60_001 : 0)) }),
+      )
+      expect(lastReplyPayload()).toEqual(
+        expired
+          ? { correlationId, status: 'uncertain', reason: 'queue_expired' }
+          : { correlationId, status: 'delivered' },
+      )
+      if (expired) expect(deliverRewardRoleMock).not.toHaveBeenCalled()
+      else expect(deliverRewardRoleMock).toHaveBeenCalledExactlyOnceWith(input)
+    },
+  )
 
   it('resolves a public guild invite through the guild client and writes a correlated reply', async () => {
     const guild = { id: 'g1' }

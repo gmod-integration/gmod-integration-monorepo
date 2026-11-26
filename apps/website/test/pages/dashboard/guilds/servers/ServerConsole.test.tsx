@@ -11,6 +11,7 @@ import { fetchAPI } from '../../../../../src/utils/api.js'
 import type * as ConsoleAPI from '../../../../../src/utils/api.js'
 import { authSession, setAuthSession } from '../../../../../src/utils/authClient.js'
 import { normalizeDiscordUserPayload } from '../../../../../src/utils/event.js'
+import { DraftRegistryContext, type DraftEntry } from '../../../../../src/hooks/draftRegistry.js'
 
 vi.mock('../../../../../src/utils/api.js', async (original) => ({
   ...(await original<typeof ConsoleAPI>()),
@@ -50,7 +51,7 @@ async function submitCommand(command = 'status') {
   await fireEvent.input(commandField(), { target: { value: command } })
   await fireEvent.submit(commandField().closest('form')!)
 }
-function renderPage(premium = true) {
+function renderPage(premium = true, entries?: DraftEntry[]) {
   const history = historyAt('/dashboard/guilds/g1/config/servers/s1/console')
   const [isPremium, setPremium] = createSignal(premium)
   const snapshot = (): DashboardAccessSnapshot => ({
@@ -70,7 +71,18 @@ function renderPage(premium = true) {
         history={history}
         root={(props) => (
           <I18nProvider>
-            <AccessProvider snapshot={snapshot()}>{props.children}</AccessProvider>
+            <AccessProvider snapshot={snapshot()}>
+              <DraftRegistryContext.Provider
+                value={{
+                  register: (entry) => {
+                    entries?.push(entry)
+                    return () => {}
+                  },
+                }}
+              >
+                {props.children}
+              </DraftRegistryContext.Provider>
+            </AccessProvider>
           </I18nProvider>
         )}
       >
@@ -103,6 +115,80 @@ afterEach(() => {
 })
 
 describe('server live console', () => {
+  it.each([
+    ['server_offline', 'The game server is offline. Your draft is preserved.'],
+    ['rate_limited', 'Too many command requests. Wait before trying again; your draft is preserved.'],
+    ['request_pending', 'A command request is already pending or was previously used.'],
+    ['console_unavailable', 'Console execution is temporarily unavailable. Your draft is preserved.'],
+    ['invalid_request', 'The game server rejected the command. Your draft is preserved.'],
+  ])('explains a rejected %s command and retains the exact draft without replay', async (code, message) => {
+    const socket = new Socket()
+    setSocket(socket)
+    renderPage()
+    socket.confirm()
+    vi.mocked(fetchAPI).mockResolvedValueOnce(response({ error: { code } }, 409))
+    await submitCommand('say preserved')
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(message))
+    expect(commandField()).toHaveValue('say preserved')
+    expect(fetchAPI).toHaveBeenCalledTimes(1)
+  })
+
+  it('preserves an expired command and treats an unreadable error response as uncertain delivery', async () => {
+    const socket = new Socket()
+    setSocket(socket)
+    renderPage()
+    socket.confirm()
+    vi.mocked(fetchAPI).mockImplementationOnce(async () => commandAck('rejected', 'expired'))
+    await submitCommand('status')
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('The command expired before execution'))
+    expect(commandField()).toHaveValue('status')
+    vi.mocked(fetchAPI).mockResolvedValueOnce(new Response('Invalid upstream JSON', { status: 502 }))
+    await submitCommand('status')
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Command delivery could not be confirmed'),
+    )
+    expect(commandField()).toHaveValue('status')
+    expect(fetchAPI).toHaveBeenCalledTimes(2)
+  })
+
+  it('retains an unsubmitted command for navigation protection and discards it explicitly', async () => {
+    const entries: DraftEntry[] = []
+    const socket = new Socket()
+    setSocket(socket)
+    renderPage(true, entries)
+    socket.confirm()
+    const guard = entries[0]!
+    expect(guard.dirty()).toBe(false)
+    await fireEvent.input(commandField(), { target: { value: 'say unsent' } })
+    expect(guard.dirty()).toBe(true)
+    expect(guard.pending()).toBe(false)
+    guard.discard()
+    expect(commandField()).toHaveValue('')
+    expect(fetchAPI).not.toHaveBeenCalled()
+  })
+
+  it('recovers a failed subscription send and stops accepting output after the socket closes', async () => {
+    const socket = new Socket()
+    socket.send.mockImplementationOnce(() => {
+      throw new Error('Transport closed')
+    })
+    setSocket(socket)
+    renderPage()
+    expect(screen.getByText('The console stream is temporarily unavailable.')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    socket.confirm()
+    socket.output('before close')
+    expect(viewOutput()).toHaveTextContent('before close')
+    socket.readyState = WebSocket.CLOSED
+    socket.dispatchEvent(new Event('close'))
+    socket.output('after close')
+    expect(viewOutput()).not.toHaveTextContent('after close')
+    socket.readyState = WebSocket.OPEN
+    socket.dispatchEvent(new Event('open'))
+    socket.confirm()
+    socket.output('restored')
+    expect(viewOutput()).toHaveTextContent('restored')
+  })
   it.each(['button', 'form'])(
     'submits immediately through the %s without opening a confirmation dialog',
     async (submission) => {
