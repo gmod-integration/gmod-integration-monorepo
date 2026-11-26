@@ -945,6 +945,13 @@
 .site-shell .admin-monitoring-table :is(th, td):first-child {
   min-width: 320px;
 }
+.site-shell .admin-connection-filters td {
+  vertical-align: top;
+  min-width: 160px;
+}
+.site-shell .admin-connection-filters td:last-child {
+  min-width: 0;
+}
 .site-shell .admin-users-table.table {
   min-width: 1120px;
 }

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { isIP } from 'node:net'
+import { CURRENT_DISCORD_SUBSCRIPTION_SKU_ID } from './discordPremium.js'
 
 const MIN_SECRET_LENGTH = 17
 const forbiddenSecretValues = new Set(['secret', 'root'])
@@ -94,7 +95,7 @@ export const ConfigSchema = z.object({
   DISCORD_GUILD_PREMIUM_ROLE_ID: z.string().min(1),
   DISCORD_GUILD_GMODSTORE_PREMIUM_ROLE_ID: z.string().min(1),
   DISCORD_GUILD_DISCORD_PREMIUM_ROLE_ID: z.string().min(1),
-  DISCORD_SUBSCRIPTION_SKU_ID: z.string().min(1),
+  DISCORD_SUBSCRIPTION_SKU_ID: z.string().trim().min(1).default(CURRENT_DISCORD_SUBSCRIPTION_SKU_ID),
 
   STEAM_API_KEY: z.string().min(1),
 

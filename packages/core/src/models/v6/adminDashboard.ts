@@ -3,7 +3,7 @@ import { developerDiscordIDs, getPlatformRank } from '@gmod/config/developers.js
 import { Prisma } from '@gmod/infra-prisma/client.js'
 import redis from '@gmod/infra-redis'
 import { getServerFromID } from '@gmod/domain-server/Server.js'
-import { invalidateGuildAccess, resolveGuildAccess } from '@gmod/domain-access/index.js'
+import { getDiscordEntitlements, invalidateGuildAccess, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import type { AccessSnapshot } from '@gmod/schema/server/AccessPolicySchema.js'
 import {
   AdminGuildListQuerySchema,
@@ -67,7 +67,7 @@ type GuildRecord = {
   createdAt: Date | string
   updatedAt: Date | string
 }
-const guildRow = (row: GuildRecord): AdminGuildRow => ({
+const guildRow = (row: GuildRecord, discordGuilds: ReadonlySet<string> | null): AdminGuildRow => ({
   id: row.id,
   name: row.name || '',
   language: row.language || 'en',
@@ -75,6 +75,7 @@ const guildRow = (row: GuildRecord): AdminGuildRow => ({
   serverCount: count(row.serverCount),
   manualPremium: !!Number(row.manualPremium),
   gmodstore: !!Number(row.gmodstore),
+  discordPremium: discordGuilds?.has(row.id) ?? null,
   partner: !!Number(row.partner),
   createdAt: iso(row.createdAt),
   updatedAt: iso(row.updatedAt),
@@ -82,12 +83,31 @@ const guildRow = (row: GuildRecord): AdminGuildRow => ({
 
 const manualGrant = Prisma.sql`EXISTS (SELECT 1 FROM gm_guild_premium p WHERE p.guildID = g.guild AND p.revoked = false)`
 const storeGrant = Prisma.sql`EXISTS (SELECT 1 FROM gm_gmodstore_purchases p WHERE p.guild = g.guild AND p.revoke = false)`
+const discordGrant = (guilds: ReadonlySet<string>) =>
+  guilds.size ? Prisma.sql`g.guild IN (${Prisma.join([...guilds])})` : Prisma.sql`false`
+
+/** One provider lookup supplies distinct subscribed communities, independently of other grants. */
+async function discordPremiumGuilds(guildID?: string): Promise<ReadonlySet<string> | null> {
+  try {
+    const entitlements = await getDiscordEntitlements(guildID)
+    return new Set(entitlements.flatMap((entitlement) => (entitlement.guild_id ? [entitlement.guild_id] : [])))
+  } catch {
+    return null
+  }
+}
+
+async function discordPremiumCount(): Promise<number | null> {
+  const guilds = await discordPremiumGuilds()
+  if (guilds === null) return null
+  if (!guilds.size) return 0
+  return prisma.gm_guild.count({ where: { guild: { in: [...guilds] } } })
+}
 const guildSelect = Prisma.sql`g.guild AS id, g.name, g.language, g.member AS members, g.isPartner AS partner, g.createdAt, g.updatedAt,
   (SELECT COUNT(*) FROM gm_server s WHERE s.guild = g.guild) AS serverCount,
   ${manualGrant} AS manualPremium, ${storeGrant} AS gmodstore`
 
-/** Prepared predicates keep Premium filtering inside the bounded DB page rather than fetching IDs. */
-function guildWhere(query: AdminListQuery) {
+/** Provider membership is applied in prepared predicates before counting and database pagination. */
+function guildWhere(query: AdminListQuery, discordGuilds: ReadonlySet<string> | null) {
   const filters: Prisma.Sql[] = [Prisma.sql`1 = 1`]
   if (query.search) {
     const search = `%${query.search.replace(/[=%_]/g, '=$&')}%`
@@ -95,14 +115,24 @@ function guildWhere(query: AdminListQuery) {
   }
   if (query.premium === 'manual') filters.push(manualGrant)
   else if (query.premium === 'gmodstore') filters.push(storeGrant)
-  else if (query.premium === 'none') filters.push(Prisma.sql`NOT ${manualGrant} AND NOT ${storeGrant}`)
+  else if (query.premium === 'discord' || query.premium === 'none') {
+    if (discordGuilds === null)
+      throw new AdminDashboardError(
+        503,
+        'discord_entitlements_unavailable',
+        'Discord subscriptions could not be verified. Try again.',
+      )
+    if (query.premium === 'discord') filters.push(discordGrant(discordGuilds))
+    else filters.push(Prisma.sql`NOT ${manualGrant} AND NOT ${storeGrant} AND NOT (${discordGrant(discordGuilds)})`)
+  }
   return Prisma.join(filters, ' AND ')
 }
 
 export async function listAdminGuilds(rawQuery: unknown): Promise<AdminListResponse<AdminGuildRow>> {
   const parsed = AdminGuildListQuerySchema.safeParse(rawQuery)
   if (!parsed.success) throw invalid()
-  const where = guildWhere(parsed.data)
+  const discordGuilds = await discordPremiumGuilds()
+  const where = guildWhere(parsed.data, discordGuilds)
   const totals = await prisma.$queryRaw<{ total: bigint }[]>(
     Prisma.sql`SELECT COUNT(*) AS total FROM gm_guild g WHERE ${where}`,
   )
@@ -120,7 +150,7 @@ export async function listAdminGuilds(rawQuery: unknown): Promise<AdminListRespo
   const direction = Prisma.raw(query.orderBy)
   const rows = await prisma.$queryRaw<GuildRecord[]>(Prisma.sql`SELECT ${guildSelect} FROM gm_guild g
     WHERE ${where} ORDER BY ${order} ${direction}, g.guild ASC LIMIT ${query.limit} OFFSET ${query.offset}`)
-  return { items: rows.map(guildRow), total, query }
+  return { items: rows.map((row) => guildRow(row, discordGuilds)), total, query }
 }
 
 export const listAdminPremium = listAdminGuilds
@@ -131,7 +161,8 @@ export async function getAdminGuildDetail(guildID: string): Promise<AdminGuildDe
     Prisma.sql`SELECT ${guildSelect} FROM gm_guild g WHERE g.guild = ${guild} LIMIT 1`,
   )
   if (!rows[0]) throw missing()
-  return { guild: guildRow(rows[0]), access: await resolveGuildAccess(guild) }
+  const [access, discordGuilds] = await Promise.all([resolveGuildAccess(guild), discordPremiumGuilds(guild)])
+  return { guild: guildRow(rows[0], discordGuilds), access }
 }
 
 const serverSelect = {
@@ -314,6 +345,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     recentUsers,
     languages,
     premium,
+    discordPremium,
   ] = await Promise.all([
     prisma.gm_guild.count(),
     prisma.gm_server.count(),
@@ -329,6 +361,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     prisma.$queryRaw<{ manualPremium: bigint; gmodstorePremium: bigint }[]>(Prisma.sql`SELECT
       (SELECT COUNT(*) FROM gm_guild g WHERE ${manualGrant}) AS manualPremium,
       (SELECT COUNT(*) FROM gm_guild g WHERE ${storeGrant}) AS gmodstorePremium`),
+    discordPremiumCount(),
   ])
   return {
     totals: {
@@ -341,6 +374,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       activeSessions: sessions,
       manualPremium: count(premium[0]?.manualPremium),
       gmodstorePremium: count(premium[0]?.gmodstorePremium),
+      discordPremium,
     },
     recent: { days: 7, guilds: recentGuilds, servers: recentServers, users: recentUsers },
     languages: languages.map((language) => ({ language: language.language, count: language._count._all })),

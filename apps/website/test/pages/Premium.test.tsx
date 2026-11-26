@@ -42,7 +42,7 @@ describe('pages/Premium.tsx', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Français' }))
 
     const monthly = screen.getByRole('heading', { name: 'Abonnement mensuel' }).closest('a')!
-    expect(within(monthly).getByText('$25.99')).toBeInTheDocument()
+    expect(within(monthly).getByText('$24.99')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Monthly subscription' })).not.toBeInTheDocument()
     expect(screen.getByText('Journaux de jeu dans le tableau de bord').closest('tr')).toBeInTheDocument()
     expect(screen.getByText('Mode whitelist').closest('tr')).toBeInTheDocument()
@@ -81,7 +81,7 @@ describe('pages/Premium.tsx', () => {
       renderWithProviders(() => <Premium />)
       const card = screen.getByText('Monthly subscription', { selector: 'h2' }).closest('a')!
       expect(card).toHaveAttribute('href', 'https://discord.com/application-directory/1110121451501129758/premium')
-      expect(within(card).getByText('$25.99')).toBeInTheDocument()
+      expect(within(card).getByText('$24.99')).toBeInTheDocument()
       expect(within(card).getByText('Subscribe on Discord')).toBeInTheDocument()
     })
 

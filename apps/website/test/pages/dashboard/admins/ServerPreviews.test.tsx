@@ -76,7 +76,7 @@ describe('read-only server previews', () => {
     expect(vi.mocked(fetchAPI).mock.calls.every(([, method]) => method === 'GET')).toBe(true)
     expect(container.textContent).not.toContain('Save to update')
   })
-  it('keeps captures visible if the status worker fails, then retries that preview', async () => {
+  it('keeps captures visible if local status data fails, then retries that preview', async () => {
     let fail = true
     vi.mocked(fetchAPI).mockImplementation(async (endpoint) =>
       endpoint.includes('status-preview') && fail

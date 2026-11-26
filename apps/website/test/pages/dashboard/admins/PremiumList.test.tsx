@@ -35,6 +35,27 @@ const access = (state = 'ready') => ({
 })
 
 describe('administrative Premium grants', () => {
+  it('shows active Discord subscriptions and applies the Discord filter on the server', async () => {
+    mockDirectory([], [{ ...guildRow(), discordPremium: true }])
+    renderPage()
+    await screen.findByText('Active subscription')
+    expect(screen.getByRole('columnheader', { name: 'Discord subscription' })).toBeInTheDocument()
+    const row = screen.getByText('Example community').closest('tr')!
+    expect(within(row).getByText('Not granted')).toBeInTheDocument()
+    expect(within(row).getByText('Active subscription')).toBeInTheDocument()
+    await fireEvent.change(screen.getByRole('combobox', { name: 'Recorded access' }), { target: { value: 'discord' } })
+    await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('premium=discord'), 'GET'))
+  })
+
+  it('distinguishes an unknown Discord subscription from a confirmed inactive subscription', async () => {
+    mockDirectory([], [{ ...guildRow(), discordPremium: null }])
+    renderPage()
+    await screen.findByText('Example community')
+    const row = screen.getByText('Example community').closest('tr')!
+    expect(within(row).getByText('Unknown')).toBeInTheDocument()
+    expect(within(row).queryByText('No active subscription')).not.toBeInTheDocument()
+  })
+
   it('filters recorded purchases and retries, refreshes and reopens effective access independently', async () => {
     mockDirectory([], [{ ...guildRow(), gmodstore: true }])
     const directory = vi.mocked(fetchAPI).getMockImplementation()!

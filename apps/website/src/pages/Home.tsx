@@ -7,7 +7,7 @@ import { Button, ButtonLink, Icon } from '../components/ui/index.js'
 import { HomeFeatures } from '../components/home/HomeFeatures.js'
 import { API_FQDN } from '../utils/api.js'
 
-type PublicStats = { guild: number | null; server: number | null; verifyUser: number | null }
+type PublicStats = { guild: number | null; server: number | null; totalUsers: number | null }
 const fetchStats = async (): Promise<PublicStats> => {
   const response = await fetch(`${API_FQDN}/stats`)
   if (!response.ok) throw new Error('Statistics unavailable')
@@ -18,7 +18,7 @@ const fetchStats = async (): Promise<PublicStats> => {
     const value = data[key]
     return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null
   }
-  return { guild: count('guild'), server: count('server'), verifyUser: count('verifyUser') }
+  return { guild: count('guild'), server: count('server'), totalUsers: count('totalUsers') }
 }
 
 const Home: Component = () => {
@@ -49,10 +49,10 @@ const Home: Component = () => {
       detail: t('home.presentation.metric_server_detail', 'Registered servers'),
     },
     {
-      key: 'verifyUser' as const,
-      icon: 'shield-check' as const,
-      label: t('home.presentation.metric_verified', 'Linked accounts'),
-      detail: t('home.presentation.metric_verified_detail', 'Steam connected to Discord'),
+      key: 'totalUsers' as const,
+      icon: 'users' as const,
+      label: t('home.presentation.metric_users', 'Users'),
+      detail: t('home.presentation.metric_users_detail', 'Registered Steam and Discord accounts'),
     },
   ]
   const value = (key: keyof PublicStats) => {

@@ -32,6 +32,19 @@ nothing else in the codebase should read `process.env` directly (see
   generated output exists. The website's `start`, `dev`, `build` and `serve` scripts run `prepare:config`
   first to compile this runtime entry; generated files remain ignored by Git.
 
+## Discord Premium subscriptions
+
+`DISCORD_SUBSCRIPTION_SKU_ID` identifies the subscription offered by purchase buttons. The current
+official SKU is `1260321278208770150`. The retired `1224469371225636965` SKU still grants Premium to
+active subscribers but is never offered for a new purchase. Configuring either official ID selects
+the current SKU for `ConfigDiscord.subscriptionSKUID` and exposes both IDs in
+`ConfigDiscord.subscriptionSKUIDs` for entitlement verification. A custom SKU remains independent.
+No numeric price is derived from these IDs: the public website advertises the current offer at
+USD 24.99/month, while Discord handles the checkout price.
+
+Restart backend services after deploying the configuration/access changes. Existing access snapshots
+expire within 60 seconds; no database migration or subscription cancellation is required.
+
 ## Platform developer allowlist
 
 The checked-in root [`developers.json`](../../developers.json) is the only source of platform developer

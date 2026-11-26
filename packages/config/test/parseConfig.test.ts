@@ -75,6 +75,25 @@ describe('packages/config src/index.ts module (parseConfig on import)', () => {
     expect(second).toBe(first)
   })
 
+  it.each(['1260321278208770150', '1224469371225636965'])(
+    'offers only the current subscription while retaining both official entitlement SKUs for config %s',
+    async (sku) => {
+      process.env.DISCORD_SUBSCRIPTION_SKU_ID = sku
+      vi.resetModules()
+      const { ConfigDiscord } = await import('../src/index.js')
+      expect(ConfigDiscord.subscriptionSKUID).toBe('1260321278208770150')
+      expect(ConfigDiscord.subscriptionSKUIDs).toEqual(['1260321278208770150', '1224469371225636965'])
+    },
+  )
+
+  it('preserves a custom subscription SKU without adding offers from another application', async () => {
+    process.env.DISCORD_SUBSCRIPTION_SKU_ID = 'custom-sku'
+    vi.resetModules()
+    const { ConfigDiscord } = await import('../src/index.js')
+    expect(ConfigDiscord.subscriptionSKUID).toBe('custom-sku')
+    expect(ConfigDiscord.subscriptionSKUIDs).toEqual(['custom-sku'])
+  })
+
   it.each([
     ['true', 'http://127.0.0.1:3002'],
     ['false', 'https://1-dsc-relay.gmod-integration.com'],

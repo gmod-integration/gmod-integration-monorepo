@@ -98,9 +98,9 @@ describe('DiscordStatusPreview', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Updating preview')
     expect(container.querySelector('[aria-busy=true]')).toBeInTheDocument()
     setLoading(false)
-    setError('The worker is unavailable')
+    setError('Server data is unavailable')
     await Promise.resolve()
-    expect(screen.getByRole('alert')).toHaveTextContent('The worker is unavailable')
+    expect(screen.getByRole('alert')).toHaveTextContent('Server data is unavailable')
     await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(retry).toHaveBeenCalledOnce()
     expect(container.querySelector('.opacity-60')).toBeInTheDocument()
@@ -118,6 +118,15 @@ describe('DiscordStatusPreview', () => {
     expect(screen.getByText('Simulation')).toBeInTheDocument()
     expect(screen.getByText(/fictional players/i)).toBeInTheDocument()
     expect(screen.getByText(/real server data|server.s real data/i)).toBeInTheDocument()
+  })
+
+  it('explains local access uncertainty without presenting conservative limits as verified Premium', () => {
+    renderWithProviders(() => <DiscordStatusPreview data={{ ...preview, accessState: 'unknown' }} />)
+    expect(
+      screen.getByText('Premium could not be verified locally. This preview uses the free limits.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Development bot')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('follows the website language for simulation guidance and dates, including after a language change', async () => {

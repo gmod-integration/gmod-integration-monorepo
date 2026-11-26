@@ -7,7 +7,7 @@ vi.mock('@gmod/config', () => ({
     clientID: 'client1',
     botToken: 'bot-token',
     gmodIntegrationLogo: 'logo-url',
-    subscriptionSKUID: 'sku1',
+    subscriptionSKUID: '1260321278208770150',
   },
 }))
 
@@ -686,6 +686,9 @@ describe('Guild', () => {
       expect(reply).toHaveBeenCalledWith(
         expect.objectContaining({ ephemeral: true, content: expect.stringContaining('Premium') }),
       )
+      const button = reply.mock.calls[0][0].components[0].toJSON().components[0]
+      expect(button.sku_id).toBe('1260321278208770150')
+      expect(button.sku_id).not.toBe('1224469371225636965')
     })
   })
 

@@ -18,6 +18,54 @@ vi.mock('@gmod/infra-mongo', () => ({
 const { listAdminConnections, listAdminErrors, listAdminBugs, monitoringSummary } =
   await import('../../../src/models/v6/adminMonitoring.js')
 const now = new Date('2026-11-22T12:00:00Z').getTime()
+type ConnectionFixture = {
+  id: string
+  name?: string
+  activeSockets?: number
+  addonVersion?: string | null
+  protocol?: 'legacy' | 'acknowledged' | null
+  requestsPerMinute?: number | null
+  lastSeenAt?: string | null
+  createdAt?: Date
+}
+function connectionsFixture(records: ConnectionFixture[]) {
+  const byID = new Map(records.map((row) => [row.id, row]))
+  mocks.count.mockResolvedValue(records.length)
+  mocks.servers.mockImplementation(async (query) => {
+    const offset = query.cursor ? records.findIndex((row) => row.id === query.cursor.id) + 1 : query.skip || 0
+    return records.slice(offset, offset + query.take).map((row) => ({
+      id: row.id,
+      name: row.name || row.id,
+      guild: 'g1',
+      gm_guild: { name: 'Community' },
+      createdAt: row.createdAt || new Date(now),
+    }))
+  })
+  mocks.eval.mockImplementation(async (_script, _size, ...keys: string[]) => [
+    now,
+    ...keys.flatMap((key) => {
+      const sockets = byID.get(key.slice('ws:server-presence:'.length))?.activeSockets ?? 0
+      return [sockets, sockets ? now + 90_000 : 0]
+    }),
+  ])
+  mocks.telemetry.mockImplementation(async (ids: string[]) => ({
+    available: true,
+    observedAt: new Date(now).toISOString(),
+    items: ids.map((id) => {
+      const row = byID.get(id)!
+      return {
+        addonVersion: row.addonVersion ?? null,
+        protocol: row.protocol ?? null,
+        lastSeenAt: row.lastSeenAt ?? null,
+        lastHttpAt: null,
+        lastWebsocketAt: null,
+        requestsPerMinute: row.requestsPerMinute ?? null,
+        httpRequestsPerMinute: row.requestsPerMinute ?? null,
+        websocketRequestsPerMinute: row.requestsPerMinute === undefined || row.requestsPerMinute === null ? null : 0,
+      }
+    }),
+  }))
+}
 beforeEach(() => {
   vi.resetAllMocks()
   mocks.count.mockResolvedValue(1)
@@ -139,6 +187,271 @@ describe('administration operational monitoring', () => {
       query: { offset: 0 },
     })
     expect(mocks.eval).not.toHaveBeenCalled()
+  })
+  it('keeps name filtering and ordering in the database when no telemetry filter is needed', async () => {
+    await listAdminConnections({ search: 'Test', name: 'Community', sort: 'name', orderBy: 'ASC' })
+    expect(mocks.servers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 0,
+        take: 25,
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        where: {
+          OR: [
+            { id: { contains: 'Test' } },
+            { name: { contains: 'Test' } },
+            { gm_guild: { name: { contains: 'Test' } } },
+          ],
+          name: { contains: 'Community' },
+        },
+      }),
+    )
+  })
+  it('sorts all candidates before pagination and reads presence in bounded batches', async () => {
+    connectionsFixture(
+      Array.from({ length: 260 }, (_, index) => ({
+        id: `s${String(index).padStart(3, '0')}`,
+        requestsPerMinute: index,
+      })),
+    )
+    const first = await listAdminConnections({ sort: 'requestsPerMinute', orderBy: 'DESC' })
+    expect(first.total).toBe(260)
+    expect(first.items).toHaveLength(25)
+    expect(first.items[0].id).toBe('s259')
+    expect(first.items[24].id).toBe('s235')
+    expect(mocks.servers).toHaveBeenCalledTimes(2)
+    expect(mocks.servers.mock.calls[1][0]).toMatchObject({ cursor: { id: 's249' }, skip: 1, take: 250 })
+    expect(mocks.eval.mock.calls.map((call) => call[1])).toEqual([250, 10])
+    const last = await listAdminConnections({ sort: 'requestsPerMinute', orderBy: 'DESC', offset: 1000 })
+    expect(last.query.offset).toBe(250)
+    expect(last.items.map((row) => row.requestsPerMinute)).toEqual([9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
+  })
+  it.each(['ASC', 'DESC'] as const)(
+    'sorts nullable telemetry %s with unknown values last and stable IDs',
+    async (orderBy) => {
+      connectionsFixture([
+        { id: 'a', requestsPerMinute: null },
+        { id: 'b', requestsPerMinute: 12 },
+        { id: 'c', requestsPerMinute: 0 },
+        { id: 'd', requestsPerMinute: 12 },
+        { id: 'e', requestsPerMinute: null },
+      ])
+      const page = await listAdminConnections({ sort: 'requestsPerMinute', orderBy })
+      expect(page.items.map((row) => row.id)).toEqual(
+        orderBy === 'ASC' ? ['c', 'b', 'd', 'a', 'e'] : ['b', 'd', 'c', 'a', 'e'],
+      )
+    },
+  )
+  it('orders numeric addon versions and puts prereleases before releases', async () => {
+    connectionsFixture([
+      { id: 'a', addonVersion: '2.10.0' },
+      { id: 'b', addonVersion: '2.9.0' },
+      { id: 'c', addonVersion: null },
+      { id: 'd', addonVersion: '2.10.0-beta.2' },
+      { id: 'e', addonVersion: '2.10.0-beta.10' },
+      { id: 'f', addonVersion: 'v2.9.0' },
+    ])
+    const ascending = await listAdminConnections({ sort: 'addonVersion', orderBy: 'ASC' })
+    expect(ascending.items.map((row) => row.id)).toEqual(['b', 'f', 'd', 'e', 'a', 'c'])
+    const descending = await listAdminConnections({ sort: 'addonVersion', orderBy: 'DESC' })
+    expect(descending.items.map((row) => row.id)).toEqual(['a', 'e', 'd', 'b', 'f', 'c'])
+  })
+  it('places a release after its prerelease even when the release was registered later', async () => {
+    connectionsFixture([
+      { id: 'a', addonVersion: '6.0.0-rc.1' },
+      { id: 'b', addonVersion: '6.0.0' },
+    ])
+    expect((await listAdminConnections({ sort: 'addonVersion', orderBy: 'ASC' })).items.map((row) => row.id)).toEqual([
+      'a',
+      'b',
+    ])
+    expect((await listAdminConnections({ sort: 'addonVersion', orderBy: 'DESC' })).items.map((row) => row.id)).toEqual([
+      'b',
+      'a',
+    ])
+  })
+  it('sorts protocol labels globally in either direction while unobserved protocols stay last', async () => {
+    connectionsFixture([
+      { id: 'a', protocol: 'legacy' },
+      { id: 'b', protocol: null },
+      { id: 'c', protocol: 'acknowledged' },
+      { id: 'd', protocol: 'legacy' },
+    ])
+    expect((await listAdminConnections({ sort: 'protocol', orderBy: 'ASC' })).items.map((row) => row.id)).toEqual([
+      'c',
+      'a',
+      'd',
+      'b',
+    ])
+    expect((await listAdminConnections({ sort: 'protocol', orderBy: 'DESC' })).items.map((row) => row.id)).toEqual([
+      'a',
+      'd',
+      'c',
+      'b',
+    ])
+  })
+  it('finishes an exact full batch without querying Redis for the empty continuation', async () => {
+    connectionsFixture(
+      Array.from({ length: 250 }, (_, index) => ({
+        id: `s${String(index).padStart(3, '0')}`,
+        requestsPerMinute: index,
+      })),
+    )
+    const page = await listAdminConnections({ sort: 'requestsPerMinute', orderBy: 'DESC', offset: 225 })
+    expect(page.total).toBe(250)
+    expect(page.items.map((row) => row.requestsPerMinute)).toEqual(Array.from({ length: 25 }, (_, index) => 24 - index))
+    expect(mocks.servers).toHaveBeenCalledTimes(2)
+    expect(mocks.servers.mock.calls[1][0]).toMatchObject({ cursor: { id: 's249' }, skip: 1, take: 250 })
+    expect(mocks.eval).toHaveBeenCalledTimes(1)
+    expect(mocks.telemetry).toHaveBeenCalledTimes(1)
+  })
+  it('preserves measured batches but marks the aggregate observation unknown when a later telemetry batch fails', async () => {
+    connectionsFixture(
+      Array.from({ length: 251 }, (_, index) => ({
+        id: `s${String(index).padStart(3, '0')}`,
+        requestsPerMinute: index,
+      })),
+    )
+    const measured = mocks.telemetry.getMockImplementation()!
+    mocks.telemetry.mockImplementation(async (ids: string[]) => {
+      if (!ids.includes('s250')) return measured(ids)
+      return {
+        available: false,
+        observedAt: null,
+        items: ids.map(() => ({
+          addonVersion: null,
+          protocol: null,
+          lastSeenAt: null,
+          lastHttpAt: null,
+          lastWebsocketAt: null,
+          requestsPerMinute: null,
+          httpRequestsPerMinute: null,
+          websocketRequestsPerMinute: null,
+        })),
+      }
+    })
+    const page = await listAdminConnections({ sort: 'requestsPerMinute', orderBy: 'DESC', limit: 500 })
+    expect(page).toMatchObject({ total: 251, presence: 'ready', telemetry: 'unavailable', trafficObservedAt: null })
+    expect(page.items[0]).toMatchObject({ id: 's249', requestsPerMinute: 249 })
+    expect(page.items.at(-1)).toMatchObject({ id: 's250', requestsPerMinute: null })
+    expect(page.items.filter((row) => row.requestsPerMinute !== null)).toHaveLength(250)
+    expect(mocks.telemetry).toHaveBeenCalledTimes(2)
+  })
+  it('combines column filters before counting and clamps the resulting page', async () => {
+    connectionsFixture([
+      {
+        id: 'a',
+        activeSockets: 1,
+        addonVersion: 'v5.2.8',
+        protocol: 'legacy',
+        requestsPerMinute: 12,
+        lastSeenAt: new Date(now).toISOString(),
+      },
+      {
+        id: 'b',
+        activeSockets: 0,
+        addonVersion: 'v5.2.8',
+        protocol: 'legacy',
+        requestsPerMinute: 12,
+        lastSeenAt: new Date(now).toISOString(),
+      },
+      {
+        id: 'c',
+        activeSockets: 1,
+        addonVersion: 'v5.2.8',
+        protocol: 'acknowledged',
+        requestsPerMinute: 12,
+        lastSeenAt: new Date(now).toISOString(),
+      },
+      {
+        id: 'd',
+        activeSockets: 1,
+        addonVersion: 'v5.3.0',
+        protocol: 'legacy',
+        requestsPerMinute: 12,
+        lastSeenAt: new Date(now).toISOString(),
+      },
+      {
+        id: 'e',
+        activeSockets: 1,
+        addonVersion: 'v5.2.8',
+        protocol: 'legacy',
+        requestsPerMinute: 13,
+        lastSeenAt: new Date(now).toISOString(),
+      },
+      {
+        id: 'f',
+        activeSockets: 1,
+        addonVersion: 'v5.2.8',
+        protocol: 'legacy',
+        requestsPerMinute: 12,
+        lastSeenAt: new Date(now - 1000).toISOString(),
+      },
+      {
+        id: 'g',
+        activeSockets: 1,
+        addonVersion: 'v5.2.8',
+        protocol: 'legacy',
+        requestsPerMinute: null,
+        lastSeenAt: null,
+      },
+    ])
+    const page = await listAdminConnections({
+      connectionState: 'connected',
+      addonVersion: 'V5.2',
+      protocol: 'legacy',
+      minRequestsPerMinute: '12',
+      maxRequestsPerMinute: '12',
+      lastSeenFrom: new Date(now).toISOString(),
+      lastSeenTo: new Date(now).toISOString(),
+      offset: 500,
+    })
+    expect(page).toMatchObject({ total: 1, query: { offset: 0 } })
+    expect(page.items.map((row) => row.id)).toEqual(['a'])
+  })
+  it('keeps unknown presence, absent sockets, unknown protocols and zero traffic distinct', async () => {
+    connectionsFixture([
+      { id: 'a', activeSockets: 0, protocol: null, requestsPerMinute: 0 },
+      { id: 'b', activeSockets: 1, protocol: 'legacy', requestsPerMinute: null },
+    ])
+    const disconnected = await listAdminConnections({ connectionState: 'disconnected', maxRequestsPerMinute: 0 })
+    expect(disconnected.items.map((row) => row.id)).toEqual(['a'])
+    expect((await listAdminConnections({ protocol: 'unknown' })).items.map((row) => row.id)).toEqual(['a'])
+    expect((await listAdminConnections({ connectionState: 'unknown' })).total).toBe(0)
+    mocks.eval.mockRejectedValueOnce(new Error('Redis unavailable'))
+    const unknown = await listAdminConnections({ connectionState: 'unknown' })
+    expect(unknown).toMatchObject({ presence: 'unavailable', total: 2, observedAt: null })
+    expect(unknown.items.every((row) => row.activeSockets === null)).toBe(true)
+  })
+  it('sorts last activity by its instant and keeps unreported activity last', async () => {
+    connectionsFixture([
+      { id: 'a', lastSeenAt: '2026-11-22T12:00:00Z' },
+      { id: 'b', lastSeenAt: null },
+      { id: 'c', lastSeenAt: '2026-11-22T12:00:01.000Z' },
+    ])
+    expect((await listAdminConnections({ sort: 'lastSeenAt', orderBy: 'ASC' })).items.map((row) => row.id)).toEqual([
+      'a',
+      'c',
+      'b',
+    ])
+    expect((await listAdminConnections({ sort: 'lastSeenAt', orderBy: 'DESC' })).items.map((row) => row.id)).toEqual([
+      'c',
+      'a',
+      'b',
+    ])
+  })
+  it.each([
+    [{ lastSeenFrom: new Date(now).toISOString() }, ['b', 'c']],
+    [{ lastSeenTo: new Date(now).toISOString() }, ['a', 'b']],
+  ])('applies inclusive activity bounds and excludes unobserved activity: %j', async (filter, expected) => {
+    connectionsFixture([
+      { id: 'a', lastSeenAt: new Date(now - 1000).toISOString() },
+      { id: 'b', lastSeenAt: new Date(now).toISOString() },
+      { id: 'c', lastSeenAt: new Date(now + 1000).toISOString() },
+      { id: 'd', lastSeenAt: null },
+    ])
+    const page = await listAdminConnections({ ...filter, sort: 'lastSeenAt', orderBy: 'ASC' })
+    expect(page.items.map((row) => row.id)).toEqual(expected)
+    expect(page.total).toBe(2)
   })
   it.each([null, [now, 0, now + 90_000], [now, 1, 0], [now, 0.5, now + 90_000]])(
     'marks malformed or contradictory lease counts unavailable: %j',

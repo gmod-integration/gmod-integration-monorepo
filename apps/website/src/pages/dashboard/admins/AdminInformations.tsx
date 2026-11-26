@@ -214,9 +214,21 @@ export default function AdminInformations() {
                     label: t('admin_v6.gmodstore_premium', 'GmodStore communities'),
                     value: value().totals.gmodstorePremium,
                   },
+                  {
+                    label: t('admin_v6.discord_premium', 'Discord subscriptions'),
+                    value: value().totals.discordPremium,
+                  },
                 ]}
                 emptyLabel={t('admin_v6.no_recorded_premium_sources', 'No active recorded Premium grants.')}
               />
+              <Show when={value().totals.discordPremium === null}>
+                <p role="status" class="text-sm text-warning">
+                  {t(
+                    'admin_v6.discord_premium_unavailable',
+                    'Discord subscriptions could not be verified. Other sources remain available.',
+                  )}
+                </p>
+              </Show>
               <p class="text-sm text-base-content/60">
                 {t(
                   'admin_v6.overlapping_access',

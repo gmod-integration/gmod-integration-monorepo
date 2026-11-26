@@ -42,6 +42,10 @@ and exposes the complete date, seconds and timezone on hover. Missing or invalid
 Use `formatDateTime` from `utils/dateTime.ts` when a translated sentence needs a plain string.
 Date inputs, chart ticks and authored legal dates keep their own formats.
 
+`SortableTableHeader` renders a column heading with a keyboard-accessible shared `Button` and a sort
+arrow. Pass the translated `label`, `active`, `direction` (`ASC`/`DESC`) and `onSort` callback; the active
+heading exposes `aria-sort`. The page owns sorting, filtering and server pagination.
+
 Read-only states share `StatusBadge`: a visible label, an optional decorative icon, and a semantic
 `tone` (`success`, `neutral`, `warning`, `danger`, `info`). Use the default 24 px size in tables/cards
 and `size="sm"` (20 px) for navigation markers and counts. Long labels wrap, and each tone has shared
@@ -475,5 +479,9 @@ and `IconButton`; the screenshot lightbox is the explicit specialized exception.
 an empty state and an expandable exact-value table. `AdminDistributionChart` compares counts on a
 shared scale without assuming exclusive categories. Their feature page owns API requests and validation.
 `DiscordStatusPreview.caption` can describe a read-only inspection instead of the settings editor.
-`DiscordMessagePreview` reuses the safe `DiscordText` formatting subset for local examples; it never
-interprets HTML or sends messages. Keep examples and effective saved configuration visibly distinct.
+`DiscordMessagePreview` is the shared local message renderer for text, embeds, avatar, timestamps and
+inactive buttons. Pass `author`, optional `avatarUrl`, `content`, `embeds`, `buttonRows`, `label` and
+`dimmed`; it knows no endpoint and never fetches or sends a Discord message. `DiscordStatusPreview`
+adds loading/error/retry, simulation and local-access notes around this same renderer. `DiscordText`
+is a separate safe formatting component that never interprets HTML. Keep examples and effective saved
+configuration visibly distinct.

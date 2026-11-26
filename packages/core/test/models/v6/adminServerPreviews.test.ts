@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({ server: vi.fn(), captures: vi.fn(), render: vi.fn() }))
+const mocks = vi.hoisted(() => ({ server: vi.fn(), captures: vi.fn(), render: vi.fn(), instance: vi.fn() }))
 vi.mock('@gmod/config', () => ({ ConfigServer: { domain: 'https://api.example.test' } }))
 vi.mock('@gmod/infra-prisma', () => ({
   default: { gm_server: { findFirst: mocks.server }, gm_server_screenshots: { findMany: mocks.captures } },
 }))
-vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({ enqueueDiscordServerStatusPreview: mocks.render }))
+vi.mock('../../../src/utils/statusMessagePreview.js', () => ({ renderStatusPreview: mocks.render }))
+vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: mocks.instance }))
 const { adminScreenshotURL, getAdminServerPreviews, getAdminServerStatusPreview } =
   await import('../../../src/models/v6/adminServerPreviews.js')
 beforeEach(() => {
   vi.resetAllMocks()
   mocks.server.mockResolvedValue({ id: 's1', name: 'Example server', guild: 'g1' })
   mocks.captures.mockResolvedValue([])
+  mocks.instance.mockResolvedValue({ id: 's1', guild: 'g1' })
 })
 describe('read-only administration previews', () => {
   it.each([
@@ -41,7 +43,7 @@ describe('read-only administration previews', () => {
       select: { id: true, title: true, url: true, createdAt: true },
     })
   })
-  it('rejects invalid or missing servers before requesting captures or a Discord rendering', async () => {
+  it('rejects invalid or missing servers before requesting captures or rendering a local preview', async () => {
     await expect(getAdminServerPreviews('../s1')).rejects.toMatchObject({ status: 400 })
     expect(mocks.server).not.toHaveBeenCalled()
     mocks.server.mockResolvedValueOnce(null)
@@ -49,10 +51,10 @@ describe('read-only administration previews', () => {
     expect(mocks.render).not.toHaveBeenCalled()
     expect(mocks.captures).not.toHaveBeenCalled()
   })
-  it('requests the saved effective status in the chosen language and propagates unavailability', async () => {
-    mocks.render.mockRejectedValueOnce(new Error('Worker unavailable'))
-    await expect(getAdminServerStatusPreview('s1', { locale: 'fr' })).rejects.toThrow('Worker unavailable')
-    expect(mocks.render).toHaveBeenCalledWith('s1', { settings: {}, locale: 'fr' }, 10000)
+  it('renders the saved effective status locally in the chosen language', async () => {
+    mocks.render.mockRejectedValueOnce(new Error('Stored data unavailable'))
+    await expect(getAdminServerStatusPreview('s1', { locale: 'fr' })).rejects.toThrow('Stored data unavailable')
+    expect(mocks.render).toHaveBeenCalledWith({ id: 's1', guild: 'g1' }, { settings: {}, locale: 'fr' })
     await expect(getAdminServerStatusPreview('s1', { simulation: true })).rejects.toMatchObject({ status: 400 })
     expect(mocks.render).toHaveBeenCalledTimes(1)
   })

@@ -3,7 +3,8 @@ import { ConfigServer } from '@gmod/config'
 import { AdminIDSchema } from '@gmod/schema/admin/AdminDashboardSchema.js'
 import { AdminPreviewQuerySchema, AdminServerPreviewsSchema } from '@gmod/schema/admin/AdminServerPreviewsSchema.js'
 import { StatusMessagePreviewSchema } from '@gmod/schema/server/StatusMessagePreviewSchema.js'
-import { enqueueDiscordServerStatusPreview } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import { getServerFromID } from '@gmod/domain-server/Server.js'
+import { renderStatusPreview } from '../../utils/statusMessagePreview.js'
 
 async function registeredServer(id: unknown) {
   const parsed = AdminIDSchema.safeParse(id)
@@ -72,8 +73,10 @@ export async function getAdminServerStatusPreview(id: unknown, query: unknown) {
       code: 'invalid_request',
     })
   const server = await registeredServer(id)
-  // The existing worker reads the effective saved configuration; it never publishes this preview.
+  const instance = await getServerFromID(server.id)
+  if (!instance)
+    throw Object.assign(new Error('Server not found.'), { name: 'AdminDashboardError', status: 404, code: 'not_found' })
   return StatusMessagePreviewSchema.parse(
-    await enqueueDiscordServerStatusPreview(server.id, { settings: {}, locale: parsed.data.locale }, 10000),
+    await renderStatusPreview(instance, { settings: {}, locale: parsed.data.locale }),
   )
 }

@@ -153,15 +153,15 @@ export type DiscordEntitlement = z.infer<typeof DiscordEntitlementSchema>
 /** Discord's list includes expired entitlements; never infer validity from guild_id alone.
  * Contract: https://docs.discord.com/developers/resources/entitlement#list-entitlements */
 export async function getDiscordEntitlements(guildID?: string): Promise<DiscordEntitlement[]> {
-  if (!ConfigDiscord.clientID || !ConfigDiscord.botToken || !ConfigDiscord.subscriptionSKUID)
+  if (!ConfigDiscord.clientID || !ConfigDiscord.botToken || !ConfigDiscord.subscriptionSKUIDs.length)
     throw new Error('Discord entitlement verification is unavailable')
-  const entitlements: DiscordEntitlement[] = []
+  const entitlements = new Map<string, DiscordEntitlement>()
   let after: string | undefined
   const visited = new Set<string>()
   for (let page = 0; page < 1000; page++) {
     const url = new URL(`https://discord.com/api/v10/applications/${ConfigDiscord.clientID}/entitlements`)
     url.searchParams.set('limit', '100')
-    url.searchParams.set('sku_ids', ConfigDiscord.subscriptionSKUID)
+    url.searchParams.set('sku_ids', ConfigDiscord.subscriptionSKUIDs.join(','))
     url.searchParams.set('exclude_ended', 'true')
     url.searchParams.set('exclude_deleted', 'true')
     if (guildID) url.searchParams.set('guild_id', guildID)
@@ -172,9 +172,9 @@ export async function getDiscordEntitlements(guildID?: string): Promise<DiscordE
     })
     if (!response.ok) throw new Error('Discord entitlement verification is unavailable')
     const entries = z.array(DiscordEntitlementSchema).parse(await response.json())
-    entitlements.push(...entries)
+    for (const entitlement of entries) entitlements.set(entitlement.id, entitlement)
     if (entries.length < 100)
-      return entitlements.filter((entitlement) =>
+      return [...entitlements.values()].filter((entitlement) =>
         activeEntitlement(entitlement, guildID ?? entitlement.guild_id ?? '', Date.now()),
       )
     after = entries.at(-1)!.id
@@ -188,7 +188,7 @@ function activeEntitlement(entitlement: DiscordEntitlement, guildID: string, now
   return (
     entitlement.guild_id === guildID &&
     entitlement.application_id === ConfigDiscord.clientID &&
-    entitlement.sku_id === ConfigDiscord.subscriptionSKUID &&
+    ConfigDiscord.subscriptionSKUIDs.includes(entitlement.sku_id) &&
     !entitlement.deleted &&
     !entitlement.consumed &&
     (entitlement.starts_at == null || Date.parse(entitlement.starts_at) <= now) &&

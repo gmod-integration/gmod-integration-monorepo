@@ -152,10 +152,17 @@ administration privilege.
 
 ## Premium sources and deployment
 
-List flags and the `manual`/`gmodstore`/`none` filters describe recorded active grants only. “No active
-recorded grant” does not establish that the community lacks Discord Premium. The details view uses the
-access resolver's snapshot for effective Premium and keeps unknown provider access distinct from a
-confirmed negative result.
+List flags and the `manual`/`gmodstore`/`discord`/`none` filters include active Discord subscriptions
+alongside recorded grants. Each directory request reads the application's active entitlements once,
+deduplicates communities and applies the Discord predicate before computing totals and pagination.
+`none` excludes every known Premium source. The overview counts registered communities with active
+Discord subscriptions; having both subscription SKUs still counts as one Discord Premium community.
+Current `1260321278208770150` and retired `1224469371225636965` subscriptions both grant Premium.
+
+If Discord verification fails, its source flags and count are unknown rather than false or zero.
+Other directories/sources remain available; `discord` and `none` filters return a retryable 503 instead
+of an inaccurate list. The details view also exposes the Discord subscription status alongside the
+access resolver's effective Premium snapshot.
 
 The manual command changes only the local legacy grant. Granting creates/reactivates its
 `gm_guild_premium` row; removing sets `revoked = true`. It preserves transaction/buyer evidence and
@@ -195,8 +202,15 @@ replicas. The response supplies the Redis observation time and `trafficWindowSec
 unavailable telemetry has null counts rather than fabricated zeroes. Each logical authenticated
 WebSocket request is counted once; retries of a deduplicated request, replies, console stream
 messages, handshakes and ping/pong frames do not increase request counts. HTTP counts include
-authenticated addon client requests. The UI refreshes only the connection list every 15 seconds
-while visible, preserves search/pagination, and labels its aggregates as applying to the current page.
+authenticated addon client requests. The connection list refreshes manually with **Refresh**.
+Its six data-column headers toggle ascending/descending sorting; the filter row accepts server name,
+WebSocket presence, addon version, observed protocol, request-count bounds and a last-activity date range.
+Use **Apply filters** to apply the combined filters, or **Reset filters** to clear them. Date inputs use
+the browser's local timezone and are sent as UTC instants. Sorting/filtering resets pagination and applies
+to all matching servers before selecting a page; missing observations sort last in either direction,
+and versions use numeric component ordering. Redis-dependent sorts/filters read candidates in bounded
+database/Redis batches; ordinary name/registration sorts retain database pagination. Search, filters and
+sorting survive manual refresh/pagination. Aggregates describe the current page.
 Counters start accumulating after the corresponding API and gateway release; there is no historical
 traffic backfill. Deploy both services to measure both transports.
 
@@ -213,7 +227,10 @@ installations; an unavailable aggregate returns an error rather than fabricated 
 `GET /v6/admin/servers/:serverID/previews` projects only identity and up to six recent capture records,
 without player metadata, addon credentials or webhook secrets. Only same-origin `/screenshots/` raster
 URLs without query credentials are embedded. `GET /v6/admin/servers/:serverID/status-preview?locale=en|fr`
-uses the existing Discord worker preview operation with the saved configuration and no draft override.
-A preview is rendered from latest received data and does not confirm actual Discord delivery. Captures
-remain available if the preview worker fails. The message sandbox is local illustrative text, separate
-from saved templates; it supports the shared inert Discord text formatting subset and sends nothing.
+builds the preview locally from the saved configuration and latest received server data, without a
+Discord worker or live Discord client. It shares the status-message builder used for real publication
+and the website's `DiscordMessagePreview` renderer. Missing local entitlement verification is explained
+with conservative free limits; it does not prevent the preview from rendering. A preview does not
+confirm actual Discord delivery. Capture loading remains independent. The message sandbox is local
+illustrative text, separate from saved templates; it supports the same inert Discord formatting and
+sends nothing.

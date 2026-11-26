@@ -322,7 +322,7 @@ const Premium: Component = () => {
         ],
         ['button']: t('premium.subscribe_on_discord', 'Subscribe on Discord'),
         ['link']: 'https://discord.com/application-directory/1110121451501129758/premium',
-        ['price']: 25.99,
+        ['price']: 24.99,
         ['permanent']: false,
       },
       ['buy']: {

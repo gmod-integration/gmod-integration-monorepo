@@ -8,6 +8,7 @@ export const guildFixture = (changes: Partial<AdminGuildRow> = {}): AdminGuildRo
   serverCount: 2,
   manualPremium: false,
   gmodstore: false,
+  discordPremium: false,
   partner: false,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-11-01T00:00:00.000Z',
@@ -38,6 +39,7 @@ export const overviewFixture = (changes: Partial<AdminOverview> = {}): AdminOver
     activeSessions: 24,
     manualPremium: 15,
     gmodstorePremium: 10,
+    discordPremium: 8,
   },
   recent: { days: 7, guilds: 12, servers: 9, users: 80 },
   languages: [

@@ -55,6 +55,28 @@ async function partnerDialog(remove = false) {
 }
 
 describe('administrative community directory', () => {
+  it('includes Discord subscriptions as a source and filters them through the server', async () => {
+    const { guild } = partnerDirectory()
+    guild.discordPremium = true
+    renderPage()
+    await screen.findByText('Example community')
+    const row = screen.getByText('Example community').closest('tr')!
+    expect(within(row).getByText('Discord subscription')).toBeInTheDocument()
+    expect(within(row).queryByText('No active recorded grant')).not.toBeInTheDocument()
+    await fireEvent.change(screen.getByRole('combobox', { name: 'Access source' }), { target: { value: 'discord' } })
+    await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('premium=discord'), 'GET'))
+  })
+
+  it('preserves unknown Discord access instead of classifying the community as having no grant', async () => {
+    const { guild } = partnerDirectory()
+    guild.discordPremium = null
+    renderPage()
+    await screen.findByText('Example community')
+    const row = screen.getByText('Example community').closest('tr')!
+    expect(within(row).getByText('Discord subscription unknown')).toBeInTheDocument()
+    expect(within(row).queryByText('No active recorded grant')).not.toBeInTheDocument()
+  })
+
   it('confirms a named partnership with a valid reason and refreshes its status independently from Premium', async () => {
     const { guild, update } = partnerDirectory()
     renderPage()

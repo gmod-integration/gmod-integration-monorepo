@@ -3,7 +3,7 @@ import { useI18n } from '../../../i18n.js'
 
 export interface AdminDistributionItem {
   label: string
-  value: number
+  value: number | null
 }
 
 /** Counts share one scale; categories can overlap and are never presented as a pie. */
@@ -13,12 +13,13 @@ const AdminDistributionChart: Component<{
   emptyLabel: string
 }> = (props) => {
   const { t, locale } = useI18n()
-  const maximum = createMemo(() => Math.max(1, ...props.items.map((item) => item.value)))
-  const number = (value: number) => value.toLocaleString(locale())
+  const maximum = createMemo(() => Math.max(1, ...props.items.map((item) => item.value ?? 0)))
+  const number = (value: number | null) =>
+    value === null ? t('ui.unknown', 'Unknown') : value.toLocaleString(locale())
   return (
     <figure class="flex min-w-0 flex-col gap-4" aria-label={props.label}>
       <Show
-        when={props.items.some((item) => item.value > 0)}
+        when={props.items.some((item) => item.value === null || item.value > 0)}
         fallback={
           <p role="status" class="text-sm text-base-content/60">
             {props.emptyLabel}
@@ -33,25 +34,27 @@ const AdminDistributionChart: Component<{
                   <span class="min-w-0 break-words">{item.label}</span>
                   <strong class="tabular-nums">{number(item.value)}</strong>
                 </div>
-                <svg
-                  viewBox="0 0 100 12"
-                  preserveAspectRatio="none"
-                  class="h-3 w-full"
-                  role="img"
-                  aria-label={`${item.label}: ${number(item.value)}`}
-                >
-                  <title>
-                    {item.label}: {number(item.value)}
-                  </title>
-                  <rect width="100" height="12" rx="3" fill="var(--color-base-200)" />
-                  <rect
-                    width={(item.value / maximum()) * 100}
-                    height="12"
-                    rx="3"
-                    fill="var(--color-primary)"
-                    data-distribution-bar
-                  />
-                </svg>
+                <Show when={item.value !== null}>
+                  <svg
+                    viewBox="0 0 100 12"
+                    preserveAspectRatio="none"
+                    class="h-3 w-full"
+                    role="img"
+                    aria-label={`${item.label}: ${number(item.value)}`}
+                  >
+                    <title>
+                      {item.label}: {number(item.value)}
+                    </title>
+                    <rect width="100" height="12" rx="3" fill="var(--color-base-200)" />
+                    <rect
+                      width={(item.value! / maximum()) * 100}
+                      height="12"
+                      rx="3"
+                      fill="var(--color-primary)"
+                      data-distribution-bar
+                    />
+                  </svg>
+                </Show>
               </li>
             )}
           </For>

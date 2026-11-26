@@ -123,7 +123,7 @@ describe('administration monitoring', () => {
     renderWithProviders(AdminMonitoring)
     const panel = screen.getByRole('region', { name: 'Server connections' })
     await within(panel).findByText('Example 1')
-    expect(within(panel).getByText('Connected')).toBeInTheDocument()
+    expect(within(panel.querySelector('tbody')!).getByText('Connected')).toBeInTheDocument()
     expect(screen.getByText('Example Lua failure')).toBeInTheDocument()
     expect(screen.getByText('Example recurring report')).toBeInTheDocument()
     await fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }))
@@ -164,8 +164,8 @@ describe('administration monitoring', () => {
     })
     renderWithProviders(AdminMonitoring)
     const panel = screen.getByRole('region', { name: 'Server connections' })
-    await within(panel).findAllByText('Unknown')
-    expect(within(panel).queryByText('Connected')).not.toBeInTheDocument()
+    await within(panel.querySelector('tbody')!).findAllByText('Unknown')
+    expect(within(panel.querySelector('tbody')!).queryByText('Connected')).not.toBeInTheDocument()
     const errors = screen.getByRole('region', { name: 'Detected Lua errors' })
     await fireEvent.change(within(errors).getByRole('combobox', { name: 'Source' }), { target: { value: 'all' } })
     await vi.waitFor(() =>
@@ -247,7 +247,7 @@ describe('administration monitoring', () => {
     })
     renderWithProviders(AdminMonitoring)
     const panel = screen.getByRole('region', { name: 'Server connections' })
-    await within(panel).findByText('Connected')
+    await within(panel.querySelector('tbody')!).findByText('Connected')
     expect(within(panel).getByText('HTTP: Unknown · WS: Unknown')).toBeInTheDocument()
     expect(
       within(panel).getByText('Request monitoring is unavailable. Traffic and activity are unknown.'),
@@ -256,7 +256,7 @@ describe('administration monitoring', () => {
     expect(within(panel).queryByText('No requests in the last 60 seconds')).not.toBeInTheDocument()
   })
 
-  it('refreshes only connections while visible, skips pending requests and stops on unmount', async () => {
+  it('refreshes connections only on request and preserves the current page and search', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     const view = renderWithProviders(AdminMonitoring)
     const panel = screen.getByRole('region', { name: 'Server connections' })
@@ -268,6 +268,15 @@ describe('administration monitoring', () => {
     await vi.waitFor(() => expect(within(panel).getByRole('button', { name: 'Refresh' })).toBeEnabled())
     await fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }))
     await within(panel).findByText('Example 26')
+    const before = countConnections()
+    await vi.advanceTimersByTimeAsync(60_000)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.advanceTimersByTimeAsync(30_000)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(countConnections()).toBe(before)
     let finish: ((response: Response) => void) | undefined
     vi.mocked(fetchAPI).mockImplementationOnce(
       () =>
@@ -275,30 +284,163 @@ describe('administration monitoring', () => {
           finish = resolve
         }),
     )
-    const before = countConnections()
-    await vi.advanceTimersByTimeAsync(15_000)
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Refresh' }))
     expect(countConnections()).toBe(before + 1)
     const request = vi.mocked(fetchAPI).mock.calls.at(-1)![0]
     expect(request).toContain('offset=25')
     expect(request).toContain('search=community')
-    // Keep the previous snapshot visible while the new observation is pending.
     expect(within(panel).getByText('Example 26')).toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: 'Refresh' })).toBeDisabled()
     await vi.advanceTimersByTimeAsync(30_000)
     expect(countConnections()).toBe(before + 1)
     finish!(ok(fixture(request)) as Response)
     await vi.waitFor(() => expect(within(panel).getByRole('button', { name: 'Refresh' })).toBeEnabled())
-    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
-    document.dispatchEvent(new Event('visibilitychange'))
-    await vi.advanceTimersByTimeAsync(30_000)
-    expect(countConnections()).toBe(before + 1)
-    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
-    document.dispatchEvent(new Event('visibilitychange'))
-    await vi.waitFor(() => expect(countConnections()).toBe(before + 2))
     expect(vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/errors'))).toHaveLength(1)
     expect(vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/bugs'))).toHaveLength(1)
     view.unmount()
     await vi.advanceTimersByTimeAsync(30_000)
     document.dispatchEvent(new Event('visibilitychange'))
-    expect(countConnections()).toBe(before + 2)
+    expect(countConnections()).toBe(before + 1)
+  })
+
+  it.each([
+    ['Server name', 'name'],
+    ['WebSocket presence', 'activeSockets'],
+    ['Addon version', 'addonVersion'],
+    ['Observed protocol', 'protocol'],
+    ['Requests / min', 'requestsPerMinute'],
+    ['Last received activity', 'lastSeenAt'],
+  ])('sorts %s in both directions on the backend and resets pagination', async (label, sort) => {
+    renderWithProviders(AdminMonitoring)
+    const panel = screen.getByRole('region', { name: 'Server connections' })
+    await within(panel).findByText('Example 1')
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }))
+    await within(panel).findByText('Example 26')
+    const button = within(panel).getByRole('button', { name: label })
+    await fireEvent.click(button)
+    await within(panel).findByText('Example 1')
+    let query = new URL(vi.mocked(fetchAPI).mock.calls.at(-1)![0], 'https://local.test').searchParams
+    expect(query.get('sort')).toBe(sort)
+    expect(query.get('orderBy')).toBe('ASC')
+    expect(query.get('offset')).toBe('0')
+    expect(button.closest('th')).toHaveAttribute('aria-sort', 'ascending')
+    await fireEvent.click(button)
+    await vi.waitFor(() => {
+      query = new URL(vi.mocked(fetchAPI).mock.calls.at(-1)![0], 'https://local.test').searchParams
+      expect(query.get('sort')).toBe(sort)
+      expect(query.get('orderBy')).toBe('DESC')
+    })
+    expect(button.closest('th')).toHaveAttribute('aria-sort', 'descending')
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/errors'))).toHaveLength(1)
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/bugs'))).toHaveLength(1)
+  })
+
+  it('combines column filters before pagination and keeps them through sorting and manual refresh', async () => {
+    renderWithProviders(AdminMonitoring)
+    const panel = screen.getByRole('region', { name: 'Server connections' })
+    await within(panel).findByText('Example 1')
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }))
+    await within(panel).findByText('Example 26')
+    const countConnections = () =>
+      vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/connections')).length
+    const before = countConnections()
+    await fireEvent.input(within(panel).getByLabelText('Filter by server name'), { target: { value: 'Example' } })
+    await fireEvent.change(within(panel).getByLabelText('Filter by WebSocket presence'), {
+      target: { value: 'connected' },
+    })
+    await fireEvent.input(within(panel).getByLabelText('Filter by addon version'), { target: { value: '5.2' } })
+    await fireEvent.change(within(panel).getByLabelText('Filter by protocol'), { target: { value: 'legacy' } })
+    await fireEvent.input(within(panel).getByLabelText('Minimum requests per minute'), { target: { value: '2' } })
+    await fireEvent.input(within(panel).getByLabelText('Maximum requests per minute'), { target: { value: '20' } })
+    await fireEvent.input(within(panel).getByLabelText('Activity from'), { target: { value: '2026-11-20T09:00' } })
+    await fireEvent.input(within(panel).getByLabelText('Activity until'), { target: { value: '2026-11-23T21:30' } })
+    expect(countConnections()).toBe(before)
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Apply filters' }))
+    await within(panel).findByText('Example 1')
+    const expected = {
+      name: 'Example',
+      connectionState: 'connected',
+      addonVersion: '5.2',
+      protocol: 'legacy',
+      minRequestsPerMinute: '2',
+      maxRequestsPerMinute: '20',
+      lastSeenFrom: new Date('2026-11-20T09:00').toISOString(),
+      lastSeenTo: new Date('2026-11-23T21:30').toISOString(),
+    }
+    const assertFilters = (offset: string) => {
+      const request = vi
+        .mocked(fetchAPI)
+        .mock.calls.filter(([path]) => path.includes('/connections'))
+        .at(-1)![0]
+      const query = new URL(request, 'https://local.test').searchParams
+      expect(query.get('offset')).toBe(offset)
+      for (const [key, value] of Object.entries(expected)) expect(query.get(key)).toBe(value)
+      return query
+    }
+    assertFilters('0')
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Addon version' }))
+    await vi.waitFor(() => expect(assertFilters('0').get('sort')).toBe('addonVersion'))
+    await vi.waitFor(() => expect(within(panel).getByRole('button', { name: 'Refresh' })).toBeEnabled())
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }))
+    await within(panel).findByText('Example 26')
+    assertFilters('25')
+    const requests = countConnections()
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Refresh' }))
+    await vi.waitFor(() => expect(countConnections()).toBe(requests + 1))
+    expect(assertFilters('25').get('sort')).toBe('addonVersion')
+    await vi.waitFor(() => expect(within(panel).getByRole('button', { name: 'Refresh' })).toBeEnabled())
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Reset filters' }))
+    await within(panel).findByText('Example 1')
+    const request = vi
+      .mocked(fetchAPI)
+      .mock.calls.filter(([path]) => path.includes('/connections'))
+      .at(-1)![0]
+    const query = new URL(request, 'https://local.test').searchParams
+    expect(query.get('offset')).toBe('0')
+    for (const key of Object.keys(expected)) expect([null, 'all']).toContain(query.get(key))
+    expect(within(panel).getByLabelText('Filter by server name')).toHaveValue('')
+    expect(within(panel).getByLabelText('Filter by addon version')).toHaveValue('')
+    expect(within(panel).getByLabelText('Filter by WebSocket presence')).toHaveValue('all')
+    expect(within(panel).getByLabelText('Filter by protocol')).toHaveValue('all')
+    expect(within(panel).getByLabelText('Minimum requests per minute')).toHaveValue(null)
+    expect(within(panel).getByLabelText('Maximum requests per minute')).toHaveValue(null)
+    expect(within(panel).getByLabelText('Activity from')).toHaveValue('')
+    expect(within(panel).getByLabelText('Activity until')).toHaveValue('')
+  })
+
+  it('keeps the last accepted results when rate or activity bounds are reversed and permits correction', async () => {
+    renderWithProviders(AdminMonitoring)
+    const panel = screen.getByRole('region', { name: 'Server connections' })
+    await within(panel).findByText('Example 1')
+    const countConnections = () =>
+      vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/connections')).length
+    const before = countConnections()
+    const apply = within(panel).getByRole('button', { name: 'Apply filters' })
+    await fireEvent.input(within(panel).getByLabelText('Minimum requests per minute'), { target: { value: '20' } })
+    await fireEvent.input(within(panel).getByLabelText('Maximum requests per minute'), { target: { value: '2' } })
+    await fireEvent.click(apply)
+    expect(within(panel).getByRole('alert')).toHaveTextContent('minimums must not exceed maximums')
+    expect(countConnections()).toBe(before)
+    expect(within(panel).getByText('Example 1')).toBeInTheDocument()
+    expect(within(panel).getByLabelText('Minimum requests per minute')).toHaveValue(20)
+    await fireEvent.input(within(panel).getByLabelText('Maximum requests per minute'), { target: { value: '30' } })
+    await fireEvent.input(within(panel).getByLabelText('Activity from'), { target: { value: '2026-11-23T12:00' } })
+    await fireEvent.input(within(panel).getByLabelText('Activity until'), { target: { value: '2026-11-20T12:00' } })
+    await fireEvent.click(apply)
+    expect(within(panel).getByRole('alert')).toBeInTheDocument()
+    expect(countConnections()).toBe(before)
+    await fireEvent.input(within(panel).getByLabelText('Activity until'), { target: { value: '2026-11-25T12:00' } })
+    await fireEvent.click(apply)
+    await vi.waitFor(() => expect(countConnections()).toBe(before + 1))
+    expect(within(panel).queryByRole('alert')).not.toBeInTheDocument()
+    const request = vi
+      .mocked(fetchAPI)
+      .mock.calls.filter(([path]) => path.includes('/connections'))
+      .at(-1)![0]
+    const query = new URL(request, 'https://local.test').searchParams
+    expect(query.get('minRequestsPerMinute')).toBe('20')
+    expect(query.get('maxRequestsPerMinute')).toBe('30')
+    expect(query.get('lastSeenFrom')).toBe(new Date('2026-11-23T12:00').toISOString())
+    expect(query.get('lastSeenTo')).toBe(new Date('2026-11-25T12:00').toISOString())
   })
 })

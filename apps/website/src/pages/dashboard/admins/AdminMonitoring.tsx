@@ -1,5 +1,6 @@
-import { createResource, createSignal, For, onCleanup, onMount, Show, type JSX } from 'solid-js'
+import { createResource, createSignal, For, Show, type JSX } from 'solid-js'
 import {
+  AdminConnectionsQuerySchema,
   AdminConnectionsSchema,
   AdminErrorsSchema,
   AdminBugsSchema,
@@ -9,10 +10,39 @@ import {
 } from '@gmod/schema/admin/AdminMonitoringSchema.js'
 import AdminPanel from '../../../components/AdminPanel.js'
 import Pagination from '../../../components/Pagination.js'
-import { Button, ButtonLink, DateTime, FormField, StatusBadge, TableState } from '../../../components/ui/index.js'
+import {
+  Button,
+  ButtonLink,
+  DateTime,
+  FormField,
+  SortableTableHeader,
+  StatusBadge,
+  TableState,
+} from '../../../components/ui/index.js'
 import { useI18n } from '../../../i18n.js'
 import { QuerySort, type ClientQuery } from '../../../utils/types/QueryTypes.js'
 import { adminGet, type AdminListQuery } from './adminApi.js'
+
+type ConnectionFilters = {
+  name: string
+  connectionState: string
+  addonVersion: string
+  protocol: string
+  minRequestsPerMinute: string
+  maxRequestsPerMinute: string
+  lastSeenFrom: string
+  lastSeenTo: string
+}
+const emptyConnectionFilters = (): ConnectionFilters => ({
+  name: '',
+  connectionState: 'all',
+  addonVersion: '',
+  protocol: 'all',
+  minRequestsPerMinute: '',
+  maxRequestsPerMinute: '',
+  lastSeenFrom: '',
+  lastSeenTo: '',
+})
 
 function monitor<T extends { total: number; query: { offset: number } }>(
   path: string,
@@ -50,31 +80,59 @@ export default function AdminMonitoring() {
   })
   const bugs = monitor<AdminBugs>('bugs', AdminBugsSchema, { days: 7, state: 'open', recurringOnly: true })
   const [connectionSearch, setConnectionSearch] = createSignal('')
+  const [connectionFilters, setConnectionFilters] = createSignal(emptyConnectionFilters())
+  const [filterError, setFilterError] = createSignal(false)
+  const editConnectionFilter = (key: keyof ConnectionFilters, value: string) => {
+    setConnectionFilters((previous) => ({ ...previous, [key]: value }))
+    setFilterError(false)
+  }
+  const applyConnectionFilters = () => {
+    const filters = connectionFilters()
+    const timestamp = (value: string) => {
+      if (!value) return undefined
+      const date = new Date(value)
+      return Number.isNaN(date.getTime()) ? value : date.toISOString()
+    }
+    const patch = {
+      ...filters,
+      search: connectionSearch().trim(),
+      minRequestsPerMinute: filters.minRequestsPerMinute === '' ? undefined : Number(filters.minRequestsPerMinute),
+      maxRequestsPerMinute: filters.maxRequestsPerMinute === '' ? undefined : Number(filters.maxRequestsPerMinute),
+      lastSeenFrom: timestamp(filters.lastSeenFrom),
+      lastSeenTo: timestamp(filters.lastSeenTo),
+    }
+    if (!AdminConnectionsQuerySchema.safeParse({ ...connections.query(), ...patch }).success) {
+      setFilterError(true)
+      return
+    }
+    setFilterError(false)
+    connections.change(patch)
+  }
+  const resetConnectionFilters = () => {
+    setConnectionSearch('')
+    setConnectionFilters(emptyConnectionFilters())
+    setFilterError(false)
+    connections.change({
+      ...emptyConnectionFilters(),
+      search: '',
+      minRequestsPerMinute: undefined,
+      maxRequestsPerMinute: undefined,
+      lastSeenFrom: undefined,
+      lastSeenTo: undefined,
+    })
+  }
+  const connectionColumns = () => [
+    { key: 'name', label: t('admin_v6.server_name', 'Server name') },
+    { key: 'activeSockets', label: t('admin_monitoring.websocket_presence', 'WebSocket presence') },
+    { key: 'addonVersion', label: t('admin_monitoring.addon_version', 'Addon version') },
+    { key: 'protocol', label: t('admin_monitoring.protocol', 'Observed protocol') },
+    { key: 'requestsPerMinute', label: t('admin_monitoring.requests_per_minute', 'Requests / min') },
+    { key: 'lastSeenAt', label: t('admin_monitoring.last_activity', 'Last received activity') },
+  ]
   const [errorSearch, setErrorSearch] = createSignal('')
   const [bugSearch, setBugSearch] = createSignal('')
   const number = (value: number) => value.toLocaleString(locale())
   const traffic = (value: number | null) => (value === null ? t('ui.unknown', 'Unknown') : number(value))
-  onMount(() => {
-    let refreshTimer: ReturnType<typeof setInterval> | undefined
-    const refresh = () => {
-      if (document.visibilityState === 'visible' && !connections.resource.loading) void connections.refetch()
-    }
-    const watchVisibility = () => {
-      if (refreshTimer !== undefined) clearInterval(refreshTimer)
-      refreshTimer = undefined
-      if (document.visibilityState === 'visible') {
-        refreshTimer = setInterval(refresh, 15_000)
-        refresh()
-      }
-    }
-    // The resource already owns the initial load; visibility changes resume only this list.
-    if (document.visibilityState === 'visible') refreshTimer = setInterval(refresh, 15_000)
-    document.addEventListener('visibilitychange', watchVisibility)
-    onCleanup(() => {
-      if (refreshTimer !== undefined) clearInterval(refreshTimer)
-      document.removeEventListener('visibilitychange', watchVisibility)
-    })
-  })
   const pageTraffic = () => {
     const page = connections.data()
     if (!page || page.telemetry !== 'ready' || page.items.some((server) => server.requestsPerMinute === null))
@@ -89,11 +147,13 @@ export default function AdminMonitoring() {
     extra?: JSX.Element,
   ) => (
     <form
+      id={`${id}-filters`}
       class="flex min-w-0 flex-wrap items-end gap-3 p-4"
       onSubmit={(event) => {
         event.preventDefault()
         if (list === connections && list.resource.loading) return
-        list.change({ search: search() })
+        if (list === connections) applyConnectionFilters()
+        else list.change({ search: search() })
       }}
     >
       <div class="min-w-0 basis-full sm:basis-64 sm:flex-1">
@@ -109,8 +169,13 @@ export default function AdminMonitoring() {
         </FormField>
       </div>
       <Button type="submit" loading={list.resource.loading}>
-        {t('admin_v6.search', 'Search')}
+        {list === connections ? t('admin_monitoring.apply_filters', 'Apply filters') : t('admin_v6.search', 'Search')}
       </Button>
+      <Show when={list === connections}>
+        <Button disabled={list.resource.loading} onClick={resetConnectionFilters}>
+          {t('admin_monitoring.reset_filters', 'Reset filters')}
+        </Button>
+      </Show>
       {extra}
       <Button loading={list.resource.loading} onClick={() => void list.refetch()}>
         {t('admin_v6.refresh', 'Refresh')}
@@ -217,13 +282,21 @@ export default function AdminMonitoring() {
         title={t('admin_monitoring.connections', 'Server connections')}
         description={t(
           'admin_monitoring.connections_note',
-          'WebSocket presence and authenticated requests received over the last 60 seconds. HTTP activity does not confirm a WebSocket connection. Presence may take up to 90 seconds to expire. Refreshes every 15 seconds while this page is visible.',
+          'WebSocket presence and authenticated requests received over the last 60 seconds. HTTP activity does not confirm a WebSocket connection. Presence may take up to 90 seconds to expire. Use Refresh to update the data.',
         )}
         icon="server"
         type="none"
         footer={footer(connections)}
       >
         {toolbar('admin-connections', connections, connectionSearch, setConnectionSearch)}
+        <Show when={filterError()}>
+          <p role="alert" class="px-4 pb-4 text-error">
+            {t(
+              'admin_monitoring.invalid_filters',
+              'Check the request limits and activity dates: minimums must not exceed maximums.',
+            )}
+          </p>
+        </Show>
         <Show when={connections.data()}>
           {(page) => (
             <div class="px-4 pb-4">
@@ -284,13 +357,161 @@ export default function AdminMonitoring() {
           <table class="table admin-monitoring-table">
             <thead>
               <tr>
-                <th>{t('admin_v6.server_name', 'Server name')}</th>
-                <th>{t('admin_monitoring.websocket_presence', 'WebSocket presence')}</th>
-                <th>{t('admin_monitoring.addon_version', 'Addon version')}</th>
-                <th>{t('admin_monitoring.protocol', 'Observed protocol')}</th>
-                <th>{t('admin_monitoring.requests_per_minute', 'Requests / min')}</th>
-                <th>{t('admin_monitoring.last_activity', 'Last received activity')}</th>
-                <th>{t('admin_monitoring.actions', 'Inspect')}</th>
+                <For each={connectionColumns()}>
+                  {(column) => (
+                    <SortableTableHeader
+                      label={column.label}
+                      active={connections.query().sort === column.key}
+                      direction={connections.query().orderBy}
+                      onSort={() =>
+                        connections.change({
+                          sort: column.key,
+                          orderBy:
+                            connections.query().sort === column.key && connections.query().orderBy === QuerySort.ASC
+                              ? QuerySort.DESC
+                              : QuerySort.ASC,
+                        })
+                      }
+                    />
+                  )}
+                </For>
+                <th scope="col">{t('admin_monitoring.actions', 'Inspect')}</th>
+              </tr>
+              <tr class="admin-connection-filters">
+                <td>
+                  <FormField id="connection-name" label={t('admin_monitoring.filter_name', 'Filter by server name')}>
+                    <input
+                      id="connection-name"
+                      form="admin-connections-filters"
+                      class="input input-sm w-full"
+                      maxLength={100}
+                      value={connectionFilters().name}
+                      onInput={(e) => editConnectionFilter('name', e.currentTarget.value)}
+                    />
+                  </FormField>
+                </td>
+                <td>
+                  <FormField
+                    id="connection-presence"
+                    label={t('admin_monitoring.filter_presence', 'Filter by WebSocket presence')}
+                  >
+                    <select
+                      id="connection-presence"
+                      form="admin-connections-filters"
+                      class="select select-sm w-full"
+                      value={connectionFilters().connectionState}
+                      onChange={(e) => editConnectionFilter('connectionState', e.currentTarget.value)}
+                    >
+                      <option value="all">{t('admin_monitoring.all_values', 'All')}</option>
+                      <option value="connected">{t('admin_monitoring.connected', 'Connected')}</option>
+                      <option value="disconnected">
+                        {t('admin_monitoring.no_connection', 'No confirmed WebSocket')}
+                      </option>
+                      <option value="unknown">{t('ui.unknown', 'Unknown')}</option>
+                    </select>
+                  </FormField>
+                </td>
+                <td>
+                  <FormField
+                    id="connection-version"
+                    label={t('admin_monitoring.filter_version', 'Filter by addon version')}
+                  >
+                    <input
+                      id="connection-version"
+                      form="admin-connections-filters"
+                      class="input input-sm w-full"
+                      maxLength={64}
+                      value={connectionFilters().addonVersion}
+                      onInput={(e) => editConnectionFilter('addonVersion', e.currentTarget.value)}
+                    />
+                  </FormField>
+                </td>
+                <td>
+                  <FormField
+                    id="connection-protocol"
+                    label={t('admin_monitoring.filter_protocol', 'Filter by protocol')}
+                  >
+                    <select
+                      id="connection-protocol"
+                      form="admin-connections-filters"
+                      class="select select-sm w-full"
+                      value={connectionFilters().protocol}
+                      onChange={(e) => editConnectionFilter('protocol', e.currentTarget.value)}
+                    >
+                      <option value="all">{t('admin_monitoring.all_values', 'All')}</option>
+                      <option value="legacy">{t('admin_monitoring.protocol_legacy', 'HTTP / legacy WebSocket')}</option>
+                      <option value="acknowledged">
+                        {t('admin_monitoring.protocol_acknowledged', 'Acknowledged WebSocket')}
+                      </option>
+                      <option value="unknown">{t('ui.unknown', 'Unknown')}</option>
+                    </select>
+                  </FormField>
+                </td>
+                <td>
+                  <div class="grid gap-2">
+                    <FormField
+                      id="connection-min-requests"
+                      label={t('admin_monitoring.min_requests', 'Minimum requests per minute')}
+                    >
+                      <input
+                        id="connection-min-requests"
+                        form="admin-connections-filters"
+                        class="input input-sm w-full"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={connectionFilters().minRequestsPerMinute}
+                        onInput={(e) => editConnectionFilter('minRequestsPerMinute', e.currentTarget.value)}
+                      />
+                    </FormField>
+                    <FormField
+                      id="connection-max-requests"
+                      label={t('admin_monitoring.max_requests', 'Maximum requests per minute')}
+                    >
+                      <input
+                        id="connection-max-requests"
+                        form="admin-connections-filters"
+                        class="input input-sm w-full"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={connectionFilters().maxRequestsPerMinute}
+                        onInput={(e) => editConnectionFilter('maxRequestsPerMinute', e.currentTarget.value)}
+                      />
+                    </FormField>
+                  </div>
+                </td>
+                <td>
+                  <div class="grid gap-2">
+                    <FormField
+                      id="connection-activity-from"
+                      label={t('admin_monitoring.activity_from', 'Activity from')}
+                    >
+                      <input
+                        id="connection-activity-from"
+                        form="admin-connections-filters"
+                        class="input input-sm w-full"
+                        type="datetime-local"
+                        value={connectionFilters().lastSeenFrom}
+                        onInput={(e) => editConnectionFilter('lastSeenFrom', e.currentTarget.value)}
+                      />
+                    </FormField>
+                    <FormField
+                      id="connection-activity-until"
+                      label={t('admin_monitoring.activity_until', 'Activity until')}
+                    >
+                      <input
+                        id="connection-activity-until"
+                        form="admin-connections-filters"
+                        class="input input-sm w-full"
+                        type="datetime-local"
+                        value={connectionFilters().lastSeenTo}
+                        onInput={(e) => editConnectionFilter('lastSeenTo', e.currentTarget.value)}
+                      />
+                    </FormField>
+                  </div>
+                </td>
+                <td />
               </tr>
             </thead>
             <tbody>
