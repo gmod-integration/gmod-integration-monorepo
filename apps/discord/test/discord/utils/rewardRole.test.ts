@@ -69,4 +69,25 @@ describe('Discord reward role delivery', () => {
     mocks.add.mockRejectedValueOnce(new Error('connection reset'))
     expect(await deliverRewardRole(input)).toEqual({ status: 'uncertain', reason: 'provider_unavailable' })
   })
+  it('rejects a deleted server without making any provider request', async () => {
+    mocks.server.mockResolvedValue(null)
+    expect(await deliverRewardRole(input)).toEqual({ status: 'failed', reason: 'server_not_found' })
+    expect(mocks.client).not.toHaveBeenCalled()
+  })
+  it.each(['missing', 'foreign'])('keeps a %s guild lookup uncertain without adding a role', async (scenario) => {
+    if (scenario === 'missing') guild = null
+    else guild.id = 'foreign'
+    expect(await deliverRewardRole(input)).toEqual({ status: 'uncertain', reason: 'provider_unavailable' })
+    expect(mocks.add).not.toHaveBeenCalled()
+  })
+  it.each(['partial', 'foreign-member', 'foreign-guild'])(
+    'does not grant privileges from a %s member response',
+    async (scenario) => {
+      if (scenario === 'partial') member.partial = true
+      if (scenario === 'foreign-member') member.id = 'foreign'
+      if (scenario === 'foreign-guild') member.guild.id = 'foreign'
+      expect(await deliverRewardRole(input)).toEqual({ status: 'uncertain', reason: 'provider_unavailable' })
+      expect(mocks.add).not.toHaveBeenCalled()
+    },
+  )
 })

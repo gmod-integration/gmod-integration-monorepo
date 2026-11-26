@@ -211,10 +211,20 @@ function makeFakeWs() {
 }
 
 const { main, gracefulShutdown } = await import('../src/main.js')
+let runConsoleMaintenance!: () => void
 
 describe('apps/websocket main()', () => {
   beforeAll(async () => {
-    await main()
+    const schedule = globalThis.setInterval
+    const timers = vi.spyOn(globalThis, 'setInterval').mockImplementation(((callback: () => void, delay: number) => {
+      if (delay === 5_000) runConsoleMaintenance = callback
+      return schedule(callback, delay)
+    }) as any)
+    try {
+      await main()
+    } finally {
+      timers.mockRestore()
+    }
   })
 
   it('connects prisma, boots the ws server + subscriber + workers, and logs the listening port', () => {
@@ -513,6 +523,24 @@ describe('apps/websocket main()', () => {
   })
 
   describe('connection heartbeat', () => {
+    it('does not start a heartbeat if the browser closes as its message listener is installed', async () => {
+      const authSession = session('closed-during-listener')
+      sessions.set(authSession.id, authSession)
+      tickets.set('closing-ticket', authSession)
+      const req = { headers: { origin: 'http://localhost:3000' }, url: '/ws?ticket=closing-ticket' }
+      expect(await verify(req)).toEqual([true])
+      const ws = makeFakeWs()
+      ws.on('newListener', (event: string) => {
+        if (event === 'message') {
+          ws.readyState = 2
+          ws.emit('close')
+        }
+      })
+      capturedWss!.emit('connection', ws, req)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(ws.listenerCount('pong')).toBe(0)
+      expect(ws.ping).not.toHaveBeenCalled()
+    })
     it('does not install a heartbeat when the readiness write closes the addon transport', async () => {
       vi.useFakeTimers()
       const ws = makeFakeWs()
@@ -1310,6 +1338,24 @@ describe('apps/websocket main()', () => {
       return { id, addon, viewer, bystander }
     }
 
+    it('accepts valid console lease invalidations and ignores malformed server identifiers', async () => {
+      const { id } = await setupConsole()
+      readConsoleViewersMock.mockClear()
+      await subscriberHandlers.message('ws:console-stream:changed', id)
+      expect(readConsoleViewersMock).toHaveBeenCalledExactlyOnceWith(id)
+      await subscriberHandlers.message('ws:console-stream:changed', '../invalid server')
+      expect(readConsoleViewersMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('periodically rechecks active viewer leases without extending their expiry', async () => {
+      const { id } = await setupConsole()
+      const renewals = renewConsoleViewerMock.mock.calls.length
+      readConsoleViewersMock.mockClear()
+      runConsoleMaintenance()
+      await vi.waitFor(() => expect(readConsoleViewersMock).toHaveBeenCalledWith(id))
+      expect(renewConsoleViewerMock).toHaveBeenCalledTimes(renewals)
+    })
+
     it('drops a console viewer immediately when its game-rank or associated-purchase authorization disappears', async () => {
       const { id, addon, viewer } = await setupConsole()
       viewer.send.mockClear()
@@ -1631,6 +1677,7 @@ describe('apps/websocket main()', () => {
       const first = handle(packet)
       const second = handle(packet)
       await handle(packet)
+      await handle(JSON.stringify({ action: 'server_status', padding: 'x'.repeat(1024) }))
       expect(resolveSessions).toHaveLength(2)
       expect(ws.close).not.toHaveBeenCalled()
       validateSessionMock.mockImplementation(async (id) => sessions.get(id) || null)

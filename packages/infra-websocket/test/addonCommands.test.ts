@@ -117,6 +117,14 @@ describe('authenticated addon execution acknowledgement', () => {
 })
 
 describe('detailed console execution outcomes', () => {
+  it('returns uncertainty without dispatching when pending-command storage rejects', async () => {
+    vi.spyOn(redis, 'set').mockRejectedValueOnce(new Error('Pending-command storage unavailable'))
+    await expect(enqueuePanelRconAndWaitDetailed(panelInput, 100)).resolves.toBe('delivery_uncertain')
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(await redis.keys('ws:addon-command:*')).toEqual([])
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it.each(['executed', 'permission_denied', 'expired', 'execution_failed'] as const)(
     'returns the authenticated terminal addon outcome: %s',
     async (code) => {

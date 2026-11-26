@@ -15,11 +15,8 @@ function discordAdministrator(guild: DiscordGuild): boolean {
     (typeof permissions === 'number' && Number.isSafeInteger(permissions) && permissions >= 0)
   ))
     return false
-  try {
-    return (BigInt(permissions) & 8n) === 8n
-  } catch {
-    return false
-  }
+  // The primitive guards above allow only decimal strings or safe nonnegative integers.
+  return (BigInt(permissions) & 8n) === 8n
 }
 
 async function linkedSteam(discordID: string): Promise<string | null> {

@@ -109,4 +109,43 @@ describe('/rewards', () => {
     await command.autocomplete(request)
     expect(request.respond.mock.calls[0][0]).toHaveLength(25)
   })
+  it('ignores a missing server option and autocomplete outside a guild', async () => {
+    const request = interaction()
+    request.options.getString = () => null
+    await command.execute(request)
+    await command.autocomplete(interaction({ guild: null }))
+    expect(request.deferReply).not.toHaveBeenCalled()
+    expect(mocks.scope).not.toHaveBeenCalled()
+    expect(mocks.choices).not.toHaveBeenCalled()
+  })
+  it('explains when no rewards are configured', async () => {
+    mocks.rewards.mockResolvedValue({ rewards: [], history: [] })
+    const request = interaction()
+    await command.execute(request)
+    expect(request.editReply).toHaveBeenCalledWith({ content: 'rewards_empty' })
+  })
+  it.each(['manual', 'locked'] as const)('shows %s progress without a history entry or description', async (status) => {
+    const item = reward()
+    mocks.rewards.mockResolvedValue({
+      rewards: [
+        {
+          ...item,
+          rule: {
+            ...item.rule,
+            description: '',
+            trigger: status === 'manual' ? { type: 'manual' } : item.rule.trigger,
+            actions: [{ type: 'discord_role', roleID: '223456789012345678' }],
+          },
+          simulation: { eligible: false, playedSeconds: 0 },
+        },
+      ],
+      history: [],
+    })
+    const request = interaction()
+    await command.execute(request)
+    const value = request.editReply.mock.calls[0][0].embeds[0].data.fields[0].value
+    expect(value).toContain(`rewards_status_${status}`)
+    expect(value).toContain('rewards_action_discord_role 223456789012345678')
+    if (status === 'manual') expect(value).not.toContain('rewards_progress')
+  })
 })

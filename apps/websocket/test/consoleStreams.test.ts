@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createConsoleStreams } from '../src/consoleStreams.js'
+import { createConsoleChunkQueue, createConsoleStreams } from '../src/consoleStreams.js'
 
 function fixture() {
   let time = new Date('2026-11-25T12:00:00Z').getTime()
@@ -24,10 +24,11 @@ function fixture() {
     return { enabled: expiresAt > time, expiresAt }
   })
   const authorize = vi.fn(async (client: Client) => client.live && client.allowed)
+  const isLive = vi.fn((client: Client) => client.live)
   const serverOnline = vi.fn(async () => true)
   const replica = () => {
     const manager = createConsoleStreams<Client>({
-      isLive: (client) => client.live,
+      isLive,
       authorize,
       serverOnline,
       send: (client, packet) => client.send(packet),
@@ -54,6 +55,7 @@ function fixture() {
     remove,
     read,
     authorize,
+    isLive,
     serverOnline,
     notify,
     advance: (ms: number) => (time += ms),
@@ -61,6 +63,255 @@ function fixture() {
 }
 
 describe('ephemeral console subscriptions', () => {
+  it('recovers its per-client queue when liveness checking fails between enqueue and execution', async () => {
+    const f = fixture()
+    const manager = f.replica()
+    const client = f.client()
+    f.isLive.mockReturnValueOnce(true).mockImplementationOnce(() => {
+      throw new Error('transport unavailable')
+    })
+    await expect(manager.subscribe(client, 'server')).rejects.toThrow('transport unavailable')
+    await manager.subscribe(client, 'server')
+    expect(f.leases.get('server')?.size).toBe(1)
+    expect(client.send).toHaveBeenLastCalledWith({ action: 'console_subscription', serverID: 'server', enabled: true })
+  })
+  it('continues its bounded delivery queue after one recipient fails', async () => {
+    const queue = createConsoleChunkQueue()
+    const deliver = vi.fn().mockRejectedValueOnce(new Error('closed recipient')).mockResolvedValue(undefined)
+    await queue('first', deliver)
+    await queue('second', deliver)
+    expect(deliver).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores closed viewers and pending subscriptions cancelled before their authorization starts', async () => {
+    const f = fixture()
+    const manager = f.replica()
+    const absent = f.client()
+    absent.live = false
+    await manager.subscribe(absent, 'server')
+    await manager.removeClient(absent)
+    const client = f.client()
+    const pending = manager.subscribe(client, 'server')
+    const closing = manager.removeClient(client)
+    await manager.subscribe(client, 'other')
+    await Promise.all([pending, closing])
+    expect(f.authorize).not.toHaveBeenCalled()
+    expect(f.renew).not.toHaveBeenCalled()
+  })
+
+  it('does not renew a socket that closes while its permissions or server status are being checked', async () => {
+    for (const stage of ['permissions', 'online'] as const) {
+      const f = fixture()
+      const manager = f.replica()
+      const client = f.client()
+      if (stage === 'permissions') f.authorize.mockImplementationOnce(async () => ((client.live = false), true))
+      else f.serverOnline.mockImplementationOnce(async () => ((client.live = false), true))
+      await manager.subscribe(client, 'server')
+      expect(f.renew).not.toHaveBeenCalled()
+      expect(client.send).not.toHaveBeenCalled()
+    }
+  })
+
+  it.each(['forbidden', 'server_offline', 'unavailable'] as const)(
+    'removes an existing viewer when a replacement subscription becomes %s',
+    async (error) => {
+      const f = fixture()
+      const manager = f.replica()
+      const client = f.client()
+      await manager.subscribe(client, 'server')
+      if (error === 'forbidden') client.allowed = false
+      if (error === 'server_offline') f.serverOnline.mockResolvedValueOnce(false)
+      if (error === 'unavailable') f.authorize.mockRejectedValueOnce(new Error('permissions unavailable'))
+      await manager.subscribe(client, 'other')
+      expect(f.leases.get('server')?.size).toBe(0)
+      expect(client.send).toHaveBeenLastCalledWith({
+        action: 'console_subscription',
+        serverID: 'other',
+        enabled: false,
+        error,
+      })
+    },
+  )
+
+  it('cleans a renewed lease even when the socket closes and both removal attempts fail', async () => {
+    const f = fixture()
+    const manager = f.replica()
+    const client = f.client()
+    f.renew.mockImplementationOnce(async () => {
+      client.live = false
+    })
+    f.remove.mockRejectedValue(new Error('Redis unavailable'))
+    await expect(manager.subscribe(client, 'server')).resolves.toBeUndefined()
+    expect(f.remove).toHaveBeenCalledTimes(2)
+    expect(client.send).not.toHaveBeenCalled()
+  })
+
+  it('does not let closed recipient errors prevent lease cleanup or addon shutdown', async () => {
+    const f = fixture()
+    const manager = f.replica()
+    const { addon } = f.owner(manager)
+    await manager.changed('server')
+    const client = f.client()
+    client.send.mockImplementation(() => {
+      throw new Error('socket closed')
+    })
+    addon.send.mockImplementation(() => {
+      throw new Error('addon closed')
+    })
+    await manager.subscribe(client, 'server')
+    expect(manager.canForward('server')).toBe(false)
+    f.remove.mockRejectedValueOnce(new Error('Redis unavailable'))
+    await expect(manager.unsubscribe(client, 'server')).resolves.toBeUndefined()
+    await manager.shutdown()
+    await manager.maintain()
+    await manager.changed('server')
+  })
+
+  it('ignores queued output after unsubscribe and closes expired or disconnected viewers before delivery', async () => {
+    for (const reason of ['expired', 'disconnected', 'unsubscribe'] as const) {
+      const f = fixture()
+      const manager = f.replica()
+      const client = f.client()
+      await manager.subscribe(client, 'server')
+      client.send.mockClear()
+      if (reason === 'expired') f.advance(30_001)
+      if (reason === 'disconnected') client.live = false
+      const pending = manager.deliver('server', 'must remain private')
+      if (reason === 'unsubscribe') await manager.unsubscribe(client, 'server')
+      await pending
+      expect(client.send.mock.calls.flat().some((packet) => packet.action === 'console_live_exporter')).toBe(false)
+      expect(f.leases.get('server')?.size).toBe(0)
+    }
+  })
+
+  it('does not send to a socket that closes during delivery authorization', async () => {
+    const f = fixture()
+    const manager = f.replica()
+    const client = f.client()
+    await manager.subscribe(client, 'server')
+    client.send.mockClear()
+    f.authorize.mockImplementationOnce(async () => ((client.live = false), true))
+    await manager.deliver('server', 'private output')
+    expect(client.send).not.toHaveBeenCalled()
+  })
+
+  it.each(['deliver', 'maintain'] as const)(
+    'fails closed after a current %s permission lookup fails',
+    async (operation) => {
+      const f = fixture()
+      const manager = f.replica()
+      const client = f.client()
+      await manager.subscribe(client, 'server')
+      f.authorize.mockRejectedValueOnce(new Error('permission store unavailable'))
+      if (operation === 'deliver') await manager.deliver('server', 'private output')
+      else await manager.maintain()
+      expect(client.send).toHaveBeenLastCalledWith({
+        action: 'console_subscription',
+        serverID: 'server',
+        enabled: false,
+        error: 'unavailable',
+      })
+      expect(f.leases.get('server')?.size).toBe(0)
+    },
+  )
+
+  it('shares one maintenance sweep while a permission lookup is pending', async () => {
+    const f = fixture()
+    const manager = f.replica()
+    const client = f.client()
+    await manager.subscribe(client, 'server')
+    let resume!: (allowed: boolean) => void
+    f.authorize.mockImplementationOnce(() => new Promise((resolve) => (resume = resolve)))
+    const first = manager.maintain()
+    expect(manager.maintain()).toBe(first)
+    resume(true)
+    await first
+  })
+
+  it.each(['forbidden', 'server_offline'] as const)(
+    'does not acknowledge a stale %s replacement after a newer subscription was queued during cleanup',
+    async (reason) => {
+      const f = fixture()
+      const manager = f.replica()
+      const client = f.client()
+      await manager.subscribe(client, 'server')
+      let replacement!: Promise<void>
+      const remove = f.remove.getMockImplementation()!
+      f.remove.mockImplementationOnce(async (...args) => {
+        replacement = manager.subscribe(client, 'fresh')
+        await remove(...args)
+      })
+      if (reason === 'forbidden') f.authorize.mockResolvedValueOnce(false)
+      else f.serverOnline.mockResolvedValueOnce(false)
+      client.send.mockClear()
+      await manager.subscribe(client, 'stale')
+      await replacement
+      expect(client.send).toHaveBeenCalledExactlyOnceWith({
+        action: 'console_subscription',
+        serverID: 'fresh',
+        enabled: true,
+      })
+      expect(f.leases.get('fresh')?.size).toBe(1)
+    },
+  )
+
+  it('fences a replacement while its previous viewer is being removed', async () => {
+    const f = fixture()
+    const manager = f.replica()
+    const client = f.client()
+    await manager.subscribe(client, 'server')
+    let resume!: () => void
+    let started!: () => void
+    const beginning = new Promise<void>((resolve) => (started = resolve))
+    f.remove.mockImplementationOnce(async () => {
+      started()
+      await new Promise<void>((resolve) => (resume = resolve))
+    })
+    const opening = manager.subscribe(client, 'other')
+    await beginning
+    const closing = manager.unsubscribe(client, 'other')
+    resume()
+    await Promise.all([opening, closing])
+    expect(f.renew).toHaveBeenCalledOnce()
+    expect(f.leases.get('other')).toBeUndefined()
+  })
+
+  it('rechecks an owner update received between a completed lease read and its pending cleanup', async () => {
+    const f = fixture()
+    const manager = f.replica()
+    const { addon } = f.owner(manager)
+    await manager.changed('server')
+    addon.send.mockImplementationOnce(() => {
+      queueMicrotask(() => {
+        void manager.changed('server')
+      })
+    })
+    f.read.mockClear()
+    await manager.subscribe(f.client(), 'server')
+    await manager.changed('server')
+    expect(f.read.mock.calls.length).toBeGreaterThanOrEqual(2)
+    expect(manager.canForward('server')).toBe(true)
+  })
+
+  it.each(['shutdown', 'replacement'] as const)(
+    'does not reschedule dirty updates for an owner after %s',
+    async (operation) => {
+      const f = fixture()
+      const manager = f.replica()
+      f.owner(manager)
+      await manager.changed('server')
+      let resume!: (lease: { enabled: boolean; expiresAt: number }) => void
+      f.read.mockImplementationOnce(() => new Promise((resolve) => (resume = resolve)))
+      const pending = manager.changed('server')
+      void manager.changed('server')
+      if (operation === 'shutdown') await manager.shutdown()
+      else f.owner(manager)
+      resume({ enabled: false, expiresAt: 0 })
+      await pending
+      expect(manager.canForward('server')).toBe(false)
+    },
+  )
+
   it('joins tabs across replicas and stops only after the last viewer leaves', async () => {
     const f = fixture()
     const first = f.replica()
