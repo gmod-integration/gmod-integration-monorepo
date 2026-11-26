@@ -28,10 +28,12 @@ describe('components/discord/DiscordRole.tsx', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('resolves the role from guildRoles by roleID and renders its name with its color', () => {
+  it('resolves the role and retains its original color as an accent instead of forcing the text color', () => {
     render(() => <DiscordRole roleID="r1" />)
     const el = screen.getByText('@Moderator')
-    expect(el).toHaveStyle({ color: '#1e2a3f' })
+    expect(el).toHaveClass('discord-role-mention')
+    expect(el.style.getPropertyValue('--discord-role-color')).toBe('#1e2a3f')
+    expect(el.style.color).toBe('')
   })
 
   it('renders nothing when roleID does not match any known role', () => {
@@ -48,7 +50,7 @@ describe('components/discord/DiscordRole.tsx', () => {
     const source = { id: 'r3', name: 'Default', color: 0, colorHex: '#000000' }
     render(() => <DiscordRole role={source} />)
     const el = screen.getByText('@Default')
-    expect(el).toHaveStyle({ color: '#7d95ff' })
+    expect(el.style.getPropertyValue('--discord-role-color')).toBe('#7d95ff')
     expect(source.colorHex).toBe('#000000')
   })
 
@@ -60,7 +62,7 @@ describe('components/discord/DiscordRole.tsx', () => {
     expect(screen.getByText('@Moderator')).toBeInTheDocument()
     guildRolesMutate([{ id: 'r1', name: 'Renamed', color: 1, colorHex: '#123456' }])
     expect(screen.queryByText('@Moderator')).not.toBeInTheDocument()
-    expect(screen.getByText('@Renamed')).toHaveStyle({ color: '#123456' })
+    expect(screen.getByText('@Renamed').style.getPropertyValue('--discord-role-color')).toBe('#123456')
     setRoleID('missing')
     expect(screen.queryByText('@Renamed')).not.toBeInTheDocument()
   })
@@ -98,7 +100,7 @@ describe('components/discord/DiscordRole.tsx', () => {
     render(() => <DiscordRole role={role()} roleID="r1" />)
     expect(screen.getByText('@VIP')).toBeInTheDocument()
     setRole({ id: 'r3', name: 'Admin', color: 0, colorHex: '#000000' })
-    expect(screen.getByText('@Admin')).toHaveStyle({ color: '#7d95ff' })
+    expect(screen.getByText('@Admin').style.getPropertyValue('--discord-role-color')).toBe('#7d95ff')
     expect(screen.queryByText('@VIP')).not.toBeInTheDocument()
     guildRolesMutate([])
   })

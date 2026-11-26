@@ -130,6 +130,10 @@ back to `@ID`; keep Discord IDs as strings. Mentions wrap long names and use the
 accent tokens. The community overview uses these mentions for administrators and `CopyableValue`
 for its Discord server ID.
 
+`DiscordRole` keeps the original role color in a decorative dot and a tinted, opaque badge background.
+Its text mixes that color with the shared theme text token to stay readable for dark, pale and
+saturated roles in both themes. Theme switches update the colors through CSS without fetching roles.
+
 | Component                                         | Source                                            | Purpose                                                                                                                                                                                                                                                                                         |
 | ------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AdminPanel`                                      | `components/AdminPanel.tsx`                       | Section heading, description, premium/badge/info, optional header `actions` and `footer`. `type="none"` leaves the body unpadded for tables.                                                                                                                                                    |
