@@ -38,6 +38,7 @@ vi.mock('@gmod/core/classes/v3/PlayerGmod.js', () => ({
 }))
 vi.mock('../../src/utils/serverStatusChart.js', () => ({ getServerChart: mocks.chart }))
 const { renderStatusPreview, resolvePreviewAccess } = await import('../../src/utils/statusMessagePreview.js')
+const { buildStatusConnectButton } = await import('../../src/utils/statusMessage.js')
 const now = new Date('2026-11-26T12:00:00Z')
 const access = (changes: Record<string, unknown> = {}) => ({
   guildID: 'g1',
@@ -235,6 +236,33 @@ describe('website status preview without Discord', () => {
     ).toHaveLength(5)
     expect(source.getStatusData).not.toHaveBeenCalled()
     expect(source.setSetting).not.toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+  it.each([
+    [
+      { hostname: 'Saved hostname', map: 'saved_map', gameMode: 'terrortown', maxPlayers: 2 },
+      ['Saved hostname', 'saved_map', 'terrortown', '5/5'],
+    ],
+    [{ hostname: '', map: '', gameMode: '', maxPlayers: 0 }, ['Garry’s Mod', 'gm_construct', 'sandbox', '5/32']],
+    [null, ['Garry’s Mod', 'gm_construct', 'sandbox', '5/32']],
+  ])('renders a usable simulation without live data or a configured server name (%#)', async (stored, expected) => {
+    const source = server()
+    source.getName = () => ''
+    mocks.stored.mockResolvedValueOnce(stored)
+    const preview = await renderStatusPreview(source, { settings: {}, simulation: true, buttons: [] })
+    expect(preview).toMatchObject({ online: true, simulation: true })
+    expect(preview.embeds[0].fields.map((field) => field.value)).toEqual(expect.arrayContaining(expected))
+    expect(source.getStatusData).not.toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('normalizes a legacy server address that already includes its port in the Connect link', async () => {
+    const connect = await buildStatusConnectButton('en', '203.0.113.7:27015', '27016')
+    expect(connect.toJSON()).toMatchObject({
+      style: 5,
+      label: '⠀en:server-connect',
+      url: 'https://website.example/open?link=steam://connect/203.0.113.7:27016',
+    })
     expect(fetch).not.toHaveBeenCalled()
   })
 })
